@@ -1,0 +1,14 @@
+.admin-incident-types-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  background: #ffffff;
+  border: 1px solid #d9d9d9;
+  border-radius: 12px;
+}
+
+.admin-incident-types-page__form {
+  display: flex;
+  gap: 8px;
+}

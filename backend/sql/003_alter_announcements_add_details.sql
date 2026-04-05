@@ -1,0 +1,3 @@
+ALTER TABLE announcements
+ADD COLUMN IF NOT EXISTS image_url TEXT,
+ADD COLUMN IF NOT EXISTS full_description TEXT;

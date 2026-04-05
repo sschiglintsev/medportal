@@ -1,0 +1,82 @@
+@use '../../styles/variables' as *;
+
+.documents-section__inner {
+  max-width: $container-width;
+  margin: 0 auto;
+  padding: 46px 20px 56px;
+}
+
+.documents-section__subtitle {
+  margin: 0 0 18px;
+  color: $color-muted;
+}
+
+.documents-section__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.documents-section__card {
+  background: $color-bg-soft;
+  border: 1px solid $color-border;
+  border-radius: $radius-md;
+  padding: 16px;
+
+  h4 {
+    margin: 0 0 12px;
+    color: $color-primary;
+    font-size: 20px;
+  }
+
+  ul {
+    margin: 0 0 14px;
+    padding-left: 18px;
+    color: $color-text;
+
+    li {
+      margin-bottom: 10px;
+    }
+
+    a {
+      text-decoration: none;
+    }
+  }
+}
+
+.documents-section__doc-title {
+  font-weight: 600;
+}
+
+.documents-section__doc-desc {
+  color: $color-muted;
+  margin: 4px 0 8px;
+}
+
+.documents-section__empty {
+  color: $color-muted;
+}
+
+@media (max-width: 980px) {
+  .documents-section__inner {
+    padding: 34px 16px 44px;
+  }
+
+  .documents-section__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .documents-section__card {
+    padding: 14px;
+
+    h4 {
+      font-size: 18px;
+    }
+
+    .ant-btn {
+      width: 100%;
+    }
+  }
+}

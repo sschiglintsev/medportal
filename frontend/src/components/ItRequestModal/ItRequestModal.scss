@@ -1,0 +1,31 @@
+.it-request-modal {
+  .ant-input,
+  .ant-select-selector,
+  .ant-input-textarea {
+    border-radius: 8px;
+  }
+}
+
+@media (max-width: 992px) {
+  .it-request-modal-wrapper {
+    .ant-modal {
+      width: calc(100vw - 24px) !important;
+      max-width: calc(100vw - 24px) !important;
+      margin: 12px auto;
+    }
+
+    .ant-modal-content {
+      padding: 14px;
+    }
+  }
+
+  .it-request-modal {
+    .ant-form-item {
+      margin-bottom: 10px;
+    }
+
+    .ant-btn {
+      width: 100%;
+    }
+  }
+}

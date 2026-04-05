@@ -1,0 +1,36 @@
+.admin-it-requests-page__item {
+  cursor: pointer;
+  border: 1px solid #e7eaf3;
+  border-radius: 10px;
+  padding: 12px 14px !important;
+  margin-bottom: 10px;
+  background: #ffffff;
+}
+
+.admin-it-requests-page__main {
+  min-width: 0;
+}
+
+.admin-it-requests-page__title {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.admin-it-requests-page__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: #5b6472;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.admin-it-requests-page__text {
+  margin-bottom: 0 !important;
+}
+
+.admin-it-requests-page__details {
+  p {
+    margin: 0 0 8px;
+  }
+}

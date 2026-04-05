@@ -1,0 +1,28 @@
+.admin-cabinet-page {
+  h2 {
+    margin-top: 0 !important;
+  }
+}
+
+.admin-cabinet-page__layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.admin-cabinet-page__sidebar {
+  background: #ffffff;
+  border: 1px solid #e7eaf3;
+  border-radius: 10px;
+  padding: 8px;
+}
+
+.admin-cabinet-page__content {
+  min-width: 0;
+}
+
+.admin-cabinet-page__section-title {
+  margin-top: 0 !important;
+  margin-bottom: 12px !important;
+}

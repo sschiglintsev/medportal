@@ -1,0 +1,44 @@
+.incident-report-modal {
+  .ant-form-item {
+    margin-bottom: 12px;
+  }
+}
+
+.incident-report-modal__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.incident-report-modal__control {
+  width: 100%;
+}
+
+@media (max-width: 992px) {
+  .incident-report-modal-wrapper {
+    .ant-modal {
+      width: calc(100vw - 24px) !important;
+      max-width: calc(100vw - 24px) !important;
+      margin: 12px auto;
+    }
+
+    .ant-modal-content {
+      padding: 14px;
+    }
+  }
+
+  .incident-report-modal__grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .incident-report-modal {
+    .ant-form-item {
+      margin-bottom: 10px;
+    }
+
+    .ant-btn {
+      width: 100%;
+    }
+  }
+}

@@ -1,0 +1,11 @@
+.home-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.home-page__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(240px, 1fr));
+  gap: 16px;
+}

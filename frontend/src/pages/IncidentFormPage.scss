@@ -1,0 +1,36 @@
+.incident-form-page {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 20px;
+  background: #ffffff;
+  border: 1px solid #b8e028;
+  border-radius: 12px;
+
+  h3 {
+    color: #4c4fea !important;
+    margin-bottom: 20px !important;
+  }
+}
+
+.incident-form-page__form {
+  .ant-form-item-label > label {
+    color: #4c4fea;
+    font-weight: 500;
+  }
+}
+
+.incident-form-page__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.incident-form-page__control {
+  width: 100%;
+}
+
+.incident-form-page__submit {
+  background: #4c4fea;
+  border-color: #4c4fea;
+  color: #ffffff;
+}
