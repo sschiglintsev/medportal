@@ -1,5 +1,6 @@
-import { Button, Statistic } from 'antd';
+import { Button } from 'antd';
 
+import { useAppStore } from '../../Core/store/app.store';
 import './HeroSection.scss';
 
 type HeroSectionProps = {
@@ -7,7 +8,17 @@ type HeroSectionProps = {
   onOpenItRequestModal: () => void;
 };
 
+const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') ?? 'http://localhost:4000';
+
 export function HeroSection({ onOpenIncidentModal, onOpenItRequestModal }: HeroSectionProps) {
+  const organization = useAppStore((state) => state.organization);
+
+  const heroUrl = organization?.hero_image_url
+    ? organization.hero_image_url.startsWith('http')
+      ? organization.hero_image_url
+      : `${API_BASE}${organization.hero_image_url}`
+    : null;
+
   return (
     <section id="hero" className="hero-section">
       <div className="hero-section__content">
@@ -27,7 +38,15 @@ export function HeroSection({ onOpenIncidentModal, onOpenItRequestModal }: HeroS
       </div>
 
       <div className="hero-section__image">
-        <div className="hero-section__image-placeholder">Медицинская иллюстрация</div>
+        {heroUrl ? (
+          <img
+            src={heroUrl}
+            alt="Главное изображение"
+            className="hero-section__image-img"
+          />
+        ) : (
+          <div className="hero-section__image-placeholder">Медицинская иллюстрация</div>
+        )}
       </div>
     </section>
   );

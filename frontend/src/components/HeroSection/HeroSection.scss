@@ -56,6 +56,15 @@
   align-items: stretch;
 }
 
+.hero-section__image-img {
+  width: 100%;
+  min-height: 360px;
+  max-height: 480px;
+  object-fit: cover;
+  border-radius: $radius-lg;
+  display: block;
+}
+
 .hero-section__image-placeholder {
   width: 100%;
   min-height: 360px;

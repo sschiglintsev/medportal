@@ -39,6 +39,7 @@ export type ItRequest = {
   location: string;
   request_text: string;
   status: string;
+  comment: string | null;
   created_at: string;
 };
 
@@ -66,9 +67,45 @@ export type User = {
   id: number;
   fullName: string;
   role: string;
+  roleTitle: string;
+  permissions: RolePermissions;
 };
 
 export type AuthResponse = {
   token: string;
   user: User;
+};
+
+export type RolePermissions = {
+  canAccessCabinet: boolean;
+  canAccessAdminCabinet: boolean;
+  canAccessQualityCabinet: boolean;
+  canAccessCabinetChief: boolean;
+  canManageReferences: boolean;
+  canManageDocuments: boolean;
+  canViewIncidents: boolean;
+  canViewItRequests: boolean;
+  canManageItRequests: boolean;
+};
+
+export type RoleOption = {
+  id: number;
+  title: string;
+  value: string;
+};
+
+export type UserListItem = {
+  id: number;
+  username: string;
+  full_name: string;
+  role: string;
+  role_title: string;
+  created_at: string;
+};
+
+export type OrganizationProfile = {
+  id: number;
+  logo_url: string | null;
+  hero_image_url: string | null;
+  updated_at: string;
 };

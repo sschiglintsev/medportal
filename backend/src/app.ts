@@ -9,6 +9,8 @@ import { authRouter } from './routes/auth.routes';
 import { announcementRouter } from './routes/announcement.routes';
 import { documentRouter } from './routes/document.routes';
 import { itRequestRouter } from './routes/it-request.routes';
+import { organizationRouter } from './routes/organization.routes';
+import { userRouter } from './routes/user.routes';
 import { errorHandler } from './middlewares/error.middleware';
 
 const app = express();
@@ -45,6 +47,8 @@ app.use('/api', incidentRouter);
 app.use('/api', announcementRouter);
 app.use('/api', documentRouter);
 app.use('/api', itRequestRouter);
+app.use('/api', organizationRouter);
+app.use('/api', userRouter);
 
 app.use(errorHandler);
 

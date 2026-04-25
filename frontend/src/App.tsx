@@ -1,14 +1,46 @@
 import { ConfigProvider } from 'antd';
+import { useEffect } from 'react';
 
+import { userHasCabinetAccess } from './Core/cabinetAccess';
+import { fetchOrganization } from './Core/services/organization.service';
 import { useAppStore } from './Core/store/app.store';
 import { MainLayout } from './layouts/MainLayout';
 import { AdminCabinetPage } from './pages/AdminCabinetPage';
+import { ChiefCabinetPage } from './pages/ChiefCabinetPage';
+import { ItDepartmentCabinetPage } from './pages/ItDepartmentCabinetPage';
 import { PromoPage } from './pages/Promo/PromoPage';
 import { QualityControlCabinetPage } from './pages/QualityControlCabinetPage';
 
 function App() {
   const user = useAppStore((state) => state.user);
   const portalView = useAppStore((state) => state.portalView);
+  const setOrganization = useAppStore((state) => state.setOrganization);
+
+  useEffect(() => {
+    void fetchOrganization()
+      .then(setOrganization)
+      .catch(() => {});
+  }, [setOrganization]);
+  const permissions = user?.permissions;
+
+  const cabinetContent = (() => {
+    if (!permissions) {
+      return <AdminCabinetPage />;
+    }
+    if (permissions.canAccessQualityCabinet) {
+      return <QualityControlCabinetPage />;
+    }
+    if (permissions.canAccessAdminCabinet) {
+      return <AdminCabinetPage />;
+    }
+    if (permissions.canAccessCabinetChief) {
+      return <ChiefCabinetPage />;
+    }
+    if (permissions.canManageItRequests) {
+      return <ItDepartmentCabinetPage />;
+    }
+    return <AdminCabinetPage />;
+  })();
 
   return (
     <ConfigProvider
@@ -18,11 +50,8 @@ function App() {
         },
       }}
     >
-      {(user?.role === 'Администратор' || user?.role === 'Контроль качества') &&
-      portalView === 'cabinet' ? (
-        <MainLayout>
-          {user.role === 'Контроль качества' ? <QualityControlCabinetPage /> : <AdminCabinetPage />}
-        </MainLayout>
+      {userHasCabinetAccess(permissions) && portalView === 'cabinet' ? (
+        <MainLayout>{cabinetContent}</MainLayout>
       ) : (
         <PromoPage />
       )}

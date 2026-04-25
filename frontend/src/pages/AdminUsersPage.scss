@@ -1,0 +1,21 @@
+.admin-users-page {
+  .ant-table-wrapper {
+    background: #ffffff;
+    border: 1px solid #e7eaf3;
+    border-radius: 10px;
+    padding: 10px;
+  }
+}
+
+.admin-users-page__actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.admin-users-page__modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}

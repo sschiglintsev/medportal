@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-import type { Department, IncidentType, User } from '../types/common';
+import { userHasCabinetAccess } from '../cabinetAccess';
+import type { Department, IncidentType, OrganizationProfile, User } from '../types/common';
 
 type AppState = {
   departments: Department[];
@@ -9,11 +10,13 @@ type AppState = {
   user: User | null;
   token: string | null;
   portalView: 'promo' | 'cabinet';
+  organization: OrganizationProfile | null;
   setDepartments: (departments: Department[]) => void;
   setIncidentTypes: (incidentTypes: IncidentType[]) => void;
   setAuth: (payload: { user: User; token: string }) => void;
   setUser: (user: User | null) => void;
   setPortalView: (view: 'promo' | 'cabinet') => void;
+  setOrganization: (org: OrganizationProfile) => void;
   clearAuth: () => void;
 };
 
@@ -25,14 +28,15 @@ export const useAppStore = create<AppState>()(
       user: null,
       token: null,
       portalView: 'promo',
+      organization: null,
       setDepartments: (departments) => set({ departments }),
       setIncidentTypes: (incidentTypes) => set({ incidentTypes }),
+      setOrganization: (organization) => set({ organization }),
       setAuth: ({ user, token }) =>
         set({
           user,
           token,
-          portalView:
-            user.role === 'Администратор' || user.role === 'Контроль качества' ? 'cabinet' : 'promo',
+          portalView: userHasCabinetAccess(user.permissions) ? 'cabinet' : 'promo',
         }),
       setUser: (user) => set({ user }),
       setPortalView: (portalView) => set({ portalView }),

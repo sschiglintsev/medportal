@@ -1,0 +1,22 @@
+.it-dept-cabinet-page__layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.it-dept-cabinet-page__sidebar {
+  background: #ffffff;
+  border: 1px solid #e7eaf3;
+  border-radius: 10px;
+  padding: 8px;
+}
+
+.it-dept-cabinet-page__content {
+  min-width: 0;
+}
+
+.it-dept-cabinet-page__title {
+  margin-top: 0 !important;
+  margin-bottom: 12px !important;
+}

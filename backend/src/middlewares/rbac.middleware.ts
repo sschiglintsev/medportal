@@ -1,20 +1,10 @@
-import { requireRoles } from './auth.middleware';
-
-export const ROLES = {
-  CHIEF_DOCTOR: 'Главный врач',
-  ADMIN: 'Администратор',
-  QUALITY_CONTROL: 'Контроль качества',
-  IT: 'ИТ отдел',
-  FACILITY: 'АХЧ отдел',
-  METROLOG: 'Metrolog',
-  EMPLOYEE: 'Сотрудник',
-} as const;
+import { requirePermission } from './auth.middleware';
 
 // Только администратор управляет справочниками.
-export const requireAdminForReferences = requireRoles([ROLES.ADMIN]);
+export const requireAdminForReferences = requirePermission('canManageReferences');
 
 // Администратор и контроль качества могут управлять документами.
-export const requireAdminOrQualityForDocuments = requireRoles([ROLES.ADMIN, ROLES.QUALITY_CONTROL]);
+export const requireAdminOrQualityForDocuments = requirePermission('canManageDocuments');
 
-// Только контроль качества видит все инциденты.
-export const requireQualityControlForIncidents = requireRoles([ROLES.QUALITY_CONTROL]);
+// Контроль качества и администратор могут просматривать инциденты.
+export const requireQualityControlForIncidents = requirePermission('canViewIncidents');

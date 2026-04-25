@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 
+import type { RolePermissions } from '../services/role.service';
+
 function getJwtSecret(): string {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
@@ -13,6 +15,8 @@ export type AuthPayload = JwtPayload & {
   userId: number;
   fullName: string;
   role: string;
+  roleTitle: string;
+  permissions: RolePermissions;
 };
 
 export type AuthenticatedRequest = Request & {
@@ -47,6 +51,39 @@ export function requireRoles(allowedRoles: string[]) {
     }
 
     if (!allowedRoles.includes(req.user.role)) {
+      res.status(403).json({ message: 'Forbidden' });
+      return;
+    }
+
+    next();
+  };
+}
+
+export function requirePermission(permission: keyof RolePermissions) {
+  return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
+    if (!req.user) {
+      res.status(401).json({ message: 'Unauthorized' });
+      return;
+    }
+
+    if (!req.user.permissions?.[permission]) {
+      res.status(403).json({ message: 'Forbidden' });
+      return;
+    }
+
+    next();
+  };
+}
+
+export function requireAnyPermission(permissions: (keyof RolePermissions)[]) {
+  return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
+    if (!req.user) {
+      res.status(401).json({ message: 'Unauthorized' });
+      return;
+    }
+
+    const allowed = permissions.some((key) => req.user?.permissions?.[key] === true);
+    if (!allowed) {
       res.status(403).json({ message: 'Forbidden' });
       return;
     }

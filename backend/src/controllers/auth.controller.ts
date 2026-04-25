@@ -5,6 +5,7 @@ import type { SignOptions } from 'jsonwebtoken';
 
 import { withDbClient } from '../db';
 import type { AuthenticatedRequest } from '../middlewares/auth.middleware';
+import { ensureAuthTables, getRegistrationRoles, getRoleByValue } from '../services/role.service';
 
 type LoginBody = {
   username: string;
@@ -17,49 +18,6 @@ type RegisterBody = {
   role: string;
   password: string;
 };
-
-const ALLOWED_ROLES = [
-  'Главный врач',
-  'Администратор',
-  'Контроль качества',
-  'ИТ отдел',
-  'АХЧ отдел',
-  'Metrolog',
-  'Сотрудник',
-];
-
-let usersTableReady = false;
-
-async function ensureUsersTable(): Promise<void> {
-  if (usersTableReady) {
-    return;
-  }
-
-  await withDbClient((client) =>
-    client.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        username VARCHAR(100) UNIQUE NOT NULL,
-        full_name VARCHAR(255) NOT NULL,
-        role VARCHAR(100) NOT NULL CHECK (
-          role IN (
-            'Главный врач',
-            'Администратор',
-            'Контроль качества',
-            'ИТ отдел',
-            'АХЧ отдел',
-            'Metrolog',
-            'Сотрудник'
-          )
-        ),
-        password_hash TEXT NOT NULL,
-        created_at TIMESTAMP NOT NULL DEFAULT NOW()
-      )
-    `),
-  );
-
-  usersTableReady = true;
-}
 
 function getJwtSecret(): string {
   const secret = process.env.JWT_SECRET;
@@ -76,7 +34,7 @@ function getJwtExpiresIn(): SignOptions['expiresIn'] {
 
 export async function login(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    await ensureUsersTable();
+    await ensureAuthTables();
 
     const body = req.body as Partial<LoginBody>;
 
@@ -116,11 +74,20 @@ export async function login(req: Request, res: Response, next: NextFunction): Pr
       return;
     }
 
+    // users.role теперь хранит английский value (slug)
+    const roleMeta = await getRoleByValue(user.role);
+    if (!roleMeta || !roleMeta.is_active) {
+      res.status(403).json({ message: 'Role is inactive or not found' });
+      return;
+    }
+
     const token = jwt.sign(
       {
         userId: user.id,
         fullName: user.full_name,
-        role: user.role,
+        role: roleMeta.value,
+        roleTitle: roleMeta.title,
+        permissions: roleMeta.permissions,
       },
       getJwtSecret(),
       { expiresIn: getJwtExpiresIn() },
@@ -131,7 +98,9 @@ export async function login(req: Request, res: Response, next: NextFunction): Pr
       user: {
         id: user.id,
         fullName: user.full_name,
-        role: user.role,
+        role: roleMeta.value,
+        roleTitle: roleMeta.title,
+        permissions: roleMeta.permissions,
       },
     });
   } catch (error) {
@@ -141,7 +110,7 @@ export async function login(req: Request, res: Response, next: NextFunction): Pr
 
 export async function register(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    await ensureUsersTable();
+    await ensureAuthTables();
 
     const body = req.body as Partial<RegisterBody>;
 
@@ -151,10 +120,12 @@ export async function register(req: Request, res: Response, next: NextFunction):
     }
     const username = body.username.trim();
     const fullName = body.fullName.trim();
-    const role = body.role;
+    const roleValue = body.role;
     const password = body.password;
 
-    if (!ALLOWED_ROLES.includes(role)) {
+    // Проверяем по value (английскому слагу)
+    const roleMeta = await getRoleByValue(roleValue);
+    if (!roleMeta || !roleMeta.is_active) {
       res.status(400).json({ message: 'Invalid role value' });
       return;
     }
@@ -166,7 +137,7 @@ export async function register(req: Request, res: Response, next: NextFunction):
         `INSERT INTO users (username, full_name, role, password_hash)
          VALUES ($1, $2, $3, $4)
          RETURNING id, username, full_name, role, created_at`,
-        [username, fullName, role, passwordHash],
+        [username, fullName, roleValue, passwordHash],
       ),
     );
 
@@ -187,6 +158,17 @@ export function me(req: AuthenticatedRequest, res: Response): void {
       id: req.user.userId,
       fullName: req.user.fullName,
       role: req.user.role,
+      roleTitle: req.user.roleTitle,
+      permissions: req.user.permissions,
     },
   });
+}
+
+export async function roles(_req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const data = await getRegistrationRoles();
+    res.status(200).json(data);
+  } catch (error) {
+    next(error);
+  }
 }

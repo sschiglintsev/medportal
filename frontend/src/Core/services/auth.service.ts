@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-import type { AuthResponse } from '../types/common';
+import type { AuthResponse, RoleOption } from '../types/common';
 
 const authApi = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api',
@@ -29,4 +29,9 @@ export async function login(payload: LoginPayload): Promise<AuthResponse> {
 
 export async function register(payload: RegisterPayload): Promise<void> {
   await authApi.post('/auth/register', payload);
+}
+
+export async function fetchRegistrationRoles(): Promise<RoleOption[]> {
+  const { data } = await authApi.get<RoleOption[]>('/auth/roles');
+  return data;
 }

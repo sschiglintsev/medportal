@@ -1,11 +1,31 @@
 import { MenuOutlined } from '@ant-design/icons';
-import { Button, Dropdown, Form, Input, Modal, Select, message } from 'antd';
+import { Button, Descriptions, Dropdown, Form, Input, Modal, Select, Tag, message } from 'antd';
 import type { MenuProps } from 'antd';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
-import { login, register } from '../../Core/services/auth.service';
+import { userHasCabinetAccess } from '../../Core/cabinetAccess';
+import { fetchRegistrationRoles, login, register } from '../../Core/services/auth.service';
+import { fetchItRequestPublic } from '../../Core/services/it-request.service';
+import type { PublicItRequest } from '../../Core/services/it-request.service';
 import { useAppStore } from '../../Core/store/app.store';
+import type { RoleOption } from '../../Core/types/common';
 import './Header.scss';
+
+const STATUS_LABELS: Record<string, string> = {
+  new: 'Новая',
+  in_progress: 'В работе',
+  done: 'Готово',
+  cancelled: 'Отменена',
+};
+const STATUS_COLORS: Record<string, string> = {
+  new: 'blue',
+  in_progress: 'orange',
+  done: 'green',
+  cancelled: 'red',
+};
+
+const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') ?? 'http://localhost:4000';
+const SHOW_REGISTRATION = import.meta.env.VITE_IS_SHOW_REGISTRATION === 'true';
 
 type LoginValues = {
   username: string;
@@ -19,26 +39,74 @@ type RegisterValues = {
   password: string;
 };
 
-const roleOptions = [
-  'Главный врач',
-  'Администратор',
-  'Контроль качества',
-  'ИТ отдел',
-  'АХЧ отдел',
-  'Metrolog',
-  'Сотрудник',
-].map((role) => ({ value: role, label: role }));
-
 export function Header() {
   const [loginOpen, setLoginOpen] = useState(false);
   const [registerOpen, setRegisterOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [registrationRoles, setRegistrationRoles] = useState<RoleOption[]>([]);
+  const [rolesLoading, setRolesLoading] = useState(false);
   const [loginForm] = Form.useForm<LoginValues>();
   const [registerForm] = Form.useForm<RegisterValues>();
+
+  const [itStatusOpen, setItStatusOpen] = useState(false);
+  const [itRequestId, setItRequestId] = useState('');
+  const [itRequest, setItRequest] = useState<PublicItRequest | null>(null);
+  const [itLoading, setItLoading] = useState(false);
+  const [itError, setItError] = useState<string | null>(null);
+
+  const handleItRequestSearch = async () => {
+    const id = Number(itRequestId.trim());
+    if (!id || isNaN(id)) {
+      setItError('Введите корректный номер заявки');
+      return;
+    }
+    setItLoading(true);
+    setItError(null);
+    setItRequest(null);
+    try {
+      const data = await fetchItRequestPublic(id);
+      setItRequest(data);
+    } catch {
+      setItError('Заявка не найдена. Проверьте номер и попробуйте снова.');
+    } finally {
+      setItLoading(false);
+    }
+  };
+
+  const handleItStatusClose = () => {
+    setItStatusOpen(false);
+    setItRequestId('');
+    setItRequest(null);
+    setItError(null);
+  };
   const user = useAppStore((state) => state.user);
   const setAuth = useAppStore((state) => state.setAuth);
   const setPortalView = useAppStore((state) => state.setPortalView);
   const clearAuth = useAppStore((state) => state.clearAuth);
+  const organization = useAppStore((state) => state.organization);
+  const logoUrl = organization?.logo_url
+    ? organization.logo_url.startsWith('http')
+      ? organization.logo_url
+      : `${API_BASE}${organization.logo_url}`
+    : null;
+
+  const roleOptions = registrationRoles.map((role) => ({ value: role.value, label: role.title }));
+
+  useEffect(() => {
+    if (!registerOpen || registrationRoles.length > 0) {
+      return;
+    }
+
+    setRolesLoading(true);
+    void fetchRegistrationRoles()
+      .then(setRegistrationRoles)
+      .catch(() => {
+        message.error('Не удалось загрузить роли');
+      })
+      .finally(() => {
+        setRolesLoading(false);
+      });
+  }, [registerOpen, registrationRoles.length]);
 
   const handleLogin = async (values: LoginValues) => {
     setLoading(true);
@@ -73,17 +141,18 @@ export function Header() {
     { key: 'hero', label: <a href="#hero">Главные</a> },
     { key: 'news', label: <a href="#news">Новости</a> },
     { key: 'documents', label: <a href="#documents">Документы</a> },
+    { key: 'it-status', label: 'Статус заявки ИТ' },
     { type: 'divider' },
     ...(user
       ? [
-          ...(user.role === 'Администратор' || user.role === 'Контроль качества'
+          ...(userHasCabinetAccess(user.permissions)
             ? [{ key: 'cabinet', label: 'Личный кабинет' }]
             : []),
           { key: 'logout', label: 'Выйти' },
         ]
       : [
           { key: 'login', label: 'Вход' },
-          { key: 'register', label: 'Регистрация' },
+          ...(SHOW_REGISTRATION ? [{ key: 'register', label: 'Регистрация' }] : []),
         ]),
   ];
 
@@ -100,6 +169,10 @@ export function Header() {
       setPortalView('cabinet');
       return;
     }
+    if (key === 'it-status') {
+      setItStatusOpen(true);
+      return;
+    }
     if (key === 'logout') {
       clearAuth();
     }
@@ -110,7 +183,13 @@ export function Header() {
       <header className="promo-header">
         <div className="promo-header__inner">
           <div className="promo-header__brand">
-            <div className="promo-header__logo">Лого</div>
+            <div className="promo-header__logo">
+              {logoUrl ? (
+                <img src={logoUrl} alt="Логотип" style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '50%' }} />
+              ) : (
+                'Лого'
+              )}
+            </div>
             <div>
               <div className="promo-header__title">Медпортал</div>
               <div className="promo-header__subtitle">ГБУЗ РБ ГДКБ №17 гор. Уфа</div>
@@ -124,10 +203,11 @@ export function Header() {
           </nav>
 
           <div className="promo-header__actions">
+            <Button onClick={() => setItStatusOpen(true)}>Статус заявки ИТ</Button>
             {user ? (
               <>
                 <span className="promo-header__user">{user.fullName}</span>
-                {user.role === 'Администратор' || user.role === 'Контроль качества' ? (
+                {userHasCabinetAccess(user.permissions) ? (
                   <Button type="primary" onClick={() => setPortalView('cabinet')}>
                     Личный кабинет
                   </Button>
@@ -137,7 +217,11 @@ export function Header() {
             ) : (
               <>
                 <Button onClick={() => setLoginOpen(true)}>Вход</Button>
-                <Button type="primary" onClick={() => setRegisterOpen(true)}>
+                <Button
+                  type="primary"
+                  onClick={() => setRegisterOpen(true)}
+                  style={{ display: SHOW_REGISTRATION ? undefined : 'none' }}
+                >
                   Регистрация
                 </Button>
               </>
@@ -200,7 +284,7 @@ export function Header() {
             <Input />
           </Form.Item>
           <Form.Item name="role" label="Роль" rules={[{ required: true, message: 'Выберите роль' }]}>
-            <Select options={roleOptions} />
+            <Select options={roleOptions} loading={rolesLoading} />
           </Form.Item>
           <Form.Item
             name="password"
@@ -213,6 +297,54 @@ export function Header() {
             Зарегистрироваться
           </Button>
         </Form>
+      </Modal>
+
+      <Modal
+        title="Статус заявки в ИТ"
+        open={itStatusOpen}
+        onCancel={handleItStatusClose}
+        footer={null}
+        destroyOnClose
+      >
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          <Input
+            placeholder="Введите номер заявки"
+            value={itRequestId}
+            onChange={(e) => {
+              setItRequestId(e.target.value);
+              setItError(null);
+              setItRequest(null);
+            }}
+            onPressEnter={() => void handleItRequestSearch()}
+            type="number"
+            min={1}
+          />
+          <Button type="primary" onClick={() => void handleItRequestSearch()} loading={itLoading}>
+            Найти
+          </Button>
+        </div>
+
+        {itError && (
+          <p style={{ color: '#ff4d4f', marginBottom: 12 }}>{itError}</p>
+        )}
+
+        {itRequest && (
+          <Descriptions bordered column={1} size="small">
+            <Descriptions.Item label="Номер заявки">#{itRequest.id}</Descriptions.Item>
+            <Descriptions.Item label="Статус">
+              <Tag color={STATUS_COLORS[itRequest.status] ?? 'default'}>
+                {STATUS_LABELS[itRequest.status] ?? itRequest.status}
+              </Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label="ФИО">{itRequest.full_name}</Descriptions.Item>
+            <Descriptions.Item label="Отделение">{itRequest.department}</Descriptions.Item>
+            <Descriptions.Item label="Кабинет">{itRequest.location}</Descriptions.Item>
+            <Descriptions.Item label="Описание">{itRequest.request_text}</Descriptions.Item>
+            {itRequest.comment && (
+              <Descriptions.Item label="Комментарий ИТ отдела">{itRequest.comment}</Descriptions.Item>
+            )}
+          </Descriptions>
+        )}
       </Modal>
     </>
   );
