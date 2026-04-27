@@ -6,6 +6,12 @@
   }
 }
 
+.it-request-modal__success {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 @media (max-width: 992px) {
   .it-request-modal-wrapper {
     .ant-modal {

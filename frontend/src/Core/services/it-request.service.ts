@@ -11,8 +11,15 @@ export type CreateItRequestPayload = {
   request_text: string;
 };
 
-export async function createItRequest(payload: CreateItRequestPayload): Promise<void> {
-  await http.post('/it-requests', payload);
+export type CreateItRequestResponse = {
+  id: number;
+  status: string;
+  created_at: string;
+};
+
+export async function createItRequest(payload: CreateItRequestPayload): Promise<CreateItRequestResponse> {
+  const { data } = await http.post<CreateItRequestResponse>('/it-requests', payload);
+  return data;
 }
 
 type AuthHeader = {
