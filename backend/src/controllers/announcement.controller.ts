@@ -121,3 +121,24 @@ export async function updateAnnouncement(req: Request, res: Response, next: Next
     next(error);
   }
 }
+
+export async function deleteAnnouncement(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) {
+      res.status(400).json({ message: 'Invalid announcement id' });
+      return;
+    }
+
+    const result = await withDbClient((client) => client.query('DELETE FROM announcements WHERE id = $1', [id]));
+
+    if (result.rowCount === 0) {
+      res.status(404).json({ message: 'Announcement not found' });
+      return;
+    }
+
+    res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+}

@@ -5,3 +5,9 @@
 .admin-announcements-page__date {
   width: 100%;
 }
+
+.admin-announcements-page__table-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}

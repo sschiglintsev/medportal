@@ -86,7 +86,7 @@
 
 .news-section__card {
   border-radius: $radius-md;
-  height: 100%;
+  height: 420px;
 
   .ant-card-body {
     height: calc(100% - 150px);
@@ -94,8 +94,21 @@
     flex-direction: column;
   }
 
+  h4 {
+    margin: 8px 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
   p {
     flex-grow: 1;
+    margin-bottom: 8px;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 }
 
@@ -156,6 +169,8 @@
   }
 
   .news-section__card {
+    height: 390px;
+
     .ant-card-body {
       padding: 12px;
       height: calc(100% - 130px);

@@ -1,0 +1,1 @@
+ALTER TABLE ahch_requests ADD COLUMN IF NOT EXISTS comment TEXT;

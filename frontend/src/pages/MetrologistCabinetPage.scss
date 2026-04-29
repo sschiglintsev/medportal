@@ -1,0 +1,63 @@
+.metrologist-cabinet-page {
+  padding: 16px 0;
+}
+
+.metrologist-cabinet-page__layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 16px;
+}
+
+.metrologist-cabinet-page__sidebar {
+  .ant-menu {
+    border-radius: 8px;
+  }
+}
+
+.metrologist-cabinet-page__content {
+  min-width: 0;
+}
+
+.metrologist-cabinet-page__title {
+  margin: 0 0 12px !important;
+}
+
+.metrologist-cabinet-page__item {
+  cursor: pointer;
+  align-items: flex-start !important;
+  gap: 12px;
+}
+
+.metrologist-cabinet-page__main {
+  min-width: 0;
+  flex: 1;
+}
+
+.metrologist-cabinet-page__request-title {
+  font-weight: 600;
+}
+
+.metrologist-cabinet-page__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  color: rgba(0, 0, 0, 0.55);
+  margin-top: 2px;
+}
+
+.metrologist-cabinet-page__text {
+  margin-top: 6px !important;
+  margin-bottom: 0 !important;
+}
+
+.metrologist-cabinet-page__details {
+  p {
+    margin-bottom: 8px;
+  }
+}
+
+@media (max-width: 960px) {
+  .metrologist-cabinet-page__layout {
+    grid-template-columns: 1fr;
+  }
+}

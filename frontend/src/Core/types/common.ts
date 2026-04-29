@@ -43,6 +43,29 @@ export type ItRequest = {
   created_at: string;
 };
 
+export type MetrologistRequest = {
+  id: number;
+  full_name: string;
+  phone: string;
+  department: string;
+  location: string;
+  request_text: string;
+  status: string;
+  comment: string | null;
+  created_at: string;
+};
+
+export type AhchRequest = {
+  id: number;
+  address: string;
+  department: string;
+  request_text: string;
+  employee_phone: string;
+  status: string;
+  comment: string | null;
+  created_at: string;
+};
+
 export type Incident = {
   id: number;
   incident_date: string;

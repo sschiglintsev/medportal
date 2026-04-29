@@ -6,11 +6,18 @@ import './HeroSection.scss';
 type HeroSectionProps = {
   onOpenIncidentModal: () => void;
   onOpenItRequestModal: () => void;
+  onOpenAhchRequestModal: () => void;
+  onOpenMetrologistRequestModal: () => void;
 };
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') ?? 'http://localhost:4000';
 
-export function HeroSection({ onOpenIncidentModal, onOpenItRequestModal }: HeroSectionProps) {
+export function HeroSection({
+  onOpenIncidentModal,
+  onOpenItRequestModal,
+  onOpenAhchRequestModal,
+  onOpenMetrologistRequestModal,
+}: HeroSectionProps) {
   const organization = useAppStore((state) => state.organization);
 
   const heroUrl = organization?.hero_image_url
@@ -32,8 +39,8 @@ export function HeroSection({ onOpenIncidentModal, onOpenItRequestModal }: HeroS
             Сообщить о нежелательном событии
           </Button>
           <Button onClick={onOpenItRequestModal}>Заявка в отдел ИТ</Button>
-          <Button>Заявка в АХЧ</Button>
-          <Button>Заявка метрологу</Button>
+          <Button onClick={onOpenAhchRequestModal}>Заявка в АХЧ</Button>
+          <Button onClick={onOpenMetrologistRequestModal}>Заявка метрологу</Button>
         </div>
       </div>
 

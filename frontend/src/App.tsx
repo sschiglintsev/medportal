@@ -7,7 +7,9 @@ import { useAppStore } from './Core/store/app.store';
 import { MainLayout } from './layouts/MainLayout';
 import { AdminCabinetPage } from './pages/AdminCabinetPage';
 import { ChiefCabinetPage } from './pages/ChiefCabinetPage';
+import { FacilityCabinetPage } from './pages/FacilityCabinetPage';
 import { ItDepartmentCabinetPage } from './pages/ItDepartmentCabinetPage';
+import { MetrologistCabinetPage } from './pages/MetrologistCabinetPage';
 import { PromoPage } from './pages/Promo/PromoPage';
 import { QualityControlCabinetPage } from './pages/QualityControlCabinetPage';
 
@@ -38,6 +40,12 @@ function App() {
     }
     if (permissions.canManageItRequests) {
       return <ItDepartmentCabinetPage />;
+    }
+    if (user?.role === 'facility') {
+      return <FacilityCabinetPage />;
+    }
+    if (user?.role === 'metrologist') {
+      return <MetrologistCabinetPage />;
     }
     return <AdminCabinetPage />;
   })();

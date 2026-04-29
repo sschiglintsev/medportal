@@ -1,22 +1,21 @@
 import { Alert, Button, Form, Input, Modal, Select, Typography, message } from 'antd';
 import { useEffect, useState } from 'react';
 
+import { createAhchRequest } from '../../Core/services/ahch-request.service';
 import { fetchDepartments } from '../../Core/services/incident.service';
-import { createItRequest } from '../../Core/services/it-request.service';
 import type { Department } from '../../Core/types/common';
-import './ItRequestModal.scss';
+import './AhchRequestModal.scss';
 
-type ItRequestModalProps = {
+type AhchRequestModalProps = {
   open: boolean;
   onClose: () => void;
 };
 
-type ItRequestFormValues = {
-  full_name: string;
-  phone: string;
+type AhchRequestFormValues = {
+  address: string;
   department: string;
-  location: string;
   request_text: string;
+  employee_phone: string;
 };
 
 const formatPhoneMask = (value: string): string => {
@@ -48,8 +47,8 @@ const formatPhoneMask = (value: string): string => {
   return formattedPhone;
 };
 
-export function ItRequestModal({ open, onClose }: ItRequestModalProps) {
-  const [form] = Form.useForm<ItRequestFormValues>();
+export function AhchRequestModal({ open, onClose }: AhchRequestModalProps) {
+  const [form] = Form.useForm<AhchRequestFormValues>();
   const [submitting, setSubmitting] = useState(false);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [createdRequestId, setCreatedRequestId] = useState<number | null>(null);
@@ -79,12 +78,12 @@ export function ItRequestModal({ open, onClose }: ItRequestModalProps) {
     onClose();
   };
 
-  const onFinish = async (values: ItRequestFormValues) => {
+  const onFinish = async (values: AhchRequestFormValues) => {
     setSubmitting(true);
     try {
-      const createdRequest = await createItRequest(values);
+      const createdRequest = await createAhchRequest(values);
       setCreatedRequestId(createdRequest.id);
-      message.success('Заявка в ИТ отправлена');
+      message.success('Заявка в АХЧ отправлена');
     } catch {
       message.error('Не удалось отправить заявку');
     } finally {
@@ -94,16 +93,16 @@ export function ItRequestModal({ open, onClose }: ItRequestModalProps) {
 
   return (
     <Modal
-      title="Заявка в отдел ИТ"
+      title="Заявка в АХЧ"
       open={open}
       onCancel={handleModalClose}
       footer={null}
       width={700}
-      wrapClassName="it-request-modal-wrapper"
+      wrapClassName="ahch-request-modal-wrapper"
       destroyOnClose
     >
       {createdRequestId ? (
-        <div className="it-request-modal__success">
+        <div className="ahch-request-modal__success">
           <Alert
             type="success"
             showIcon
@@ -122,17 +121,9 @@ export function ItRequestModal({ open, onClose }: ItRequestModalProps) {
           </Button>
         </div>
       ) : (
-        <Form form={form} layout="vertical" onFinish={onFinish} className="it-request-modal">
-          <Form.Item name="full_name" label="ФИО" rules={[{ required: true, message: 'Введите ФИО' }]}>
+        <Form form={form} layout="vertical" onFinish={onFinish} className="ahch-request-modal">
+          <Form.Item name="address" label="Адрес" rules={[{ required: true, message: 'Введите адрес' }]}>
             <Input />
-          </Form.Item>
-          <Form.Item
-            name="phone"
-            label="Телефон"
-            rules={[{ required: true, message: 'Введите телефон' }]}
-            getValueFromEvent={(event) => formatPhoneMask(event.target.value)}
-          >
-            <Input placeholder="+7(___)___-__-__" />
           </Form.Item>
           <Form.Item
             name="department"
@@ -142,18 +133,19 @@ export function ItRequestModal({ open, onClose }: ItRequestModalProps) {
             <Select options={departments.map((item) => ({ value: item.name, label: item.name }))} />
           </Form.Item>
           <Form.Item
-            name="location"
-            label="Кабинет (номер)"
-            rules={[{ required: true, message: 'Введите номер кабинета' }]}
-          >
-            <Input placeholder="Например: 214" />
-          </Form.Item>
-          <Form.Item
             name="request_text"
-            label="Описание проблемы"
-            rules={[{ required: true, message: 'Опишите проблему' }]}
+            label="Описание заявки"
+            rules={[{ required: true, message: 'Опишите заявку' }]}
           >
             <Input.TextArea rows={4} />
+          </Form.Item>
+          <Form.Item
+            name="employee_phone"
+            label="Телефон сотрудника"
+            rules={[{ required: true, message: 'Введите телефон' }]}
+            getValueFromEvent={(event) => formatPhoneMask(event.target.value)}
+          >
+            <Input placeholder="+7(___)___-__-__" />
           </Form.Item>
 
           <Button type="primary" htmlType="submit" loading={submitting}>

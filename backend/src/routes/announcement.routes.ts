@@ -2,6 +2,7 @@ import { Router } from 'express';
 
 import {
   createAnnouncement,
+  deleteAnnouncement,
   getAnnouncements,
   updateAnnouncement,
 } from '../controllers/announcement.controller';
@@ -13,5 +14,6 @@ const announcementRouter = Router();
 announcementRouter.get('/announcements', getAnnouncements);
 announcementRouter.post('/announcements', requireAuth, requireAdminForReferences, createAnnouncement);
 announcementRouter.put('/announcements/:id', requireAuth, requireAdminForReferences, updateAnnouncement);
+announcementRouter.delete('/announcements/:id', requireAuth, requireAdminForReferences, deleteAnnouncement);
 
 export { announcementRouter };

@@ -1,0 +1,33 @@
+.admin-metrologist-requests-page__item {
+  cursor: pointer;
+  align-items: flex-start !important;
+  gap: 12px;
+}
+
+.admin-metrologist-requests-page__main {
+  min-width: 0;
+  flex: 1;
+}
+
+.admin-metrologist-requests-page__request-title {
+  font-weight: 600;
+}
+
+.admin-metrologist-requests-page__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  color: rgba(0, 0, 0, 0.55);
+  margin-top: 2px;
+}
+
+.admin-metrologist-requests-page__text {
+  margin-top: 6px !important;
+  margin-bottom: 0 !important;
+}
+
+.admin-metrologist-requests-page__details {
+  p {
+    margin-bottom: 8px;
+  }
+}

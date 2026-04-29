@@ -1,5 +1,6 @@
 import {
   ApartmentOutlined,
+  ExperimentOutlined,
   FileTextOutlined,
   NotificationOutlined,
   SettingOutlined,
@@ -17,6 +18,7 @@ import { AdminDepartmentsPage } from './AdminDepartmentsPage';
 import { AdminDocumentsPage } from './AdminDocumentsPage';
 import { AdminIncidentTypesPage } from './AdminIncidentTypesPage';
 import { AdminItRequestsPage } from './AdminItRequestsPage';
+import { AdminMetrologistRequestsPage } from './AdminMetrologistRequestsPage';
 import { AdminOrganizationPage } from './AdminOrganizationPage';
 import { AdminUsersPage } from './AdminUsersPage';
 import './AdminCabinetPage.scss';
@@ -27,6 +29,7 @@ type Section =
   | 'announcements'
   | 'documents'
   | 'it-requests'
+  | 'metrologist-requests'
   | 'incidents'
   | 'users'
   | 'organization';
@@ -37,6 +40,7 @@ const SECTION_TITLES: Record<Section, string> = {
   announcements: 'Объявления',
   documents: 'Документы',
   'it-requests': 'Заявки в ИТ',
+  'metrologist-requests': 'Заявки метрологу',
   incidents: 'Нежелательные события',
   users: 'Пользователи',
   organization: 'Профиль организации',
@@ -49,6 +53,8 @@ export function AdminCabinetPage() {
     switch (activeSection) {
       case 'it-requests':
         return <AdminItRequestsPage />;
+      case 'metrologist-requests':
+        return <AdminMetrologistRequestsPage />;
       case 'documents':
         return <AdminDocumentsPage />;
       case 'announcements':
@@ -80,6 +86,7 @@ export function AdminCabinetPage() {
               { key: 'announcements', icon: <NotificationOutlined />, label: 'Объявления' },
               { key: 'documents', icon: <FileTextOutlined />, label: 'Документы' },
               { key: 'it-requests', icon: <ToolOutlined />, label: 'Заявки в ИТ' },
+              { key: 'metrologist-requests', icon: <ExperimentOutlined />, label: 'Заявки метрологу' },
               { key: 'incidents', icon: <UnorderedListOutlined />, label: 'Нежелательные события' },
               { type: 'divider' },
               { key: 'users', icon: <TeamOutlined />, label: 'Пользователи' },

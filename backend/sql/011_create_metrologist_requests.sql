@@ -1,0 +1,10 @@
+CREATE TABLE IF NOT EXISTS metrologist_requests (
+  id SERIAL PRIMARY KEY,
+  full_name VARCHAR(255) NOT NULL,
+  phone VARCHAR(50) NOT NULL,
+  department VARCHAR(255) NOT NULL,
+  location VARCHAR(255) NOT NULL,
+  request_text TEXT NOT NULL,
+  status VARCHAR(50) NOT NULL DEFAULT 'new',
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);

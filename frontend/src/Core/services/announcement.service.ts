@@ -42,3 +42,11 @@ export async function updateAnnouncement(
   });
   return data;
 }
+
+export async function deleteAnnouncement(id: number, auth: AuthHeader): Promise<void> {
+  await http.delete(`/announcements/${id}`, {
+    headers: {
+      Authorization: `Bearer ${auth.token}`,
+    },
+  });
+}

@@ -1,4 +1,5 @@
-import { Button, DatePicker, Form, Input, Modal, Space, Table, message } from 'antd';
+import { DeleteOutlined, EditOutlined } from '@ant-design/icons';
+import { Button, DatePicker, Form, Input, Modal, Popconfirm, Space, Table, Tooltip, message } from 'antd';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
 import { useEffect, useState } from 'react';
@@ -6,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { formatDate, formatDateTime } from '../Core/date.utils';
 import {
   createAnnouncement,
+  deleteAnnouncement,
   fetchAnnouncements,
   updateAnnouncement,
 } from '../Core/services/announcement.service';
@@ -27,6 +29,7 @@ export function AdminAnnouncementsPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Announcement | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const token = useAppStore((state) => state.token);
   const [form] = Form.useForm<AnnouncementFormValues>();
 
@@ -99,6 +102,24 @@ export function AdminAnnouncementsPage() {
     }
   };
 
+  const handleDelete = async (id: number) => {
+    if (!token) {
+      message.error('Требуется авторизация');
+      return;
+    }
+
+    setDeletingId(id);
+    try {
+      await deleteAnnouncement(id, { token });
+      message.success('Объявление удалено');
+      await loadAnnouncements();
+    } catch {
+      message.error('Не удалось удалить объявление');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   return (
     <section className="admin-announcements-page">
       <Space className="admin-announcements-page__actions">
@@ -125,7 +146,6 @@ export function AdminAnnouncementsPage() {
             render: (value: string) => formatDate(value),
           },
           { title: 'Заголовок', dataIndex: 'title', key: 'title' },
-          { title: 'Описание', dataIndex: 'description', key: 'description', ellipsis: true },
           {
             title: 'Полное описание',
             dataIndex: 'full_description',
@@ -142,11 +162,35 @@ export function AdminAnnouncementsPage() {
           {
             title: 'Действия',
             key: 'actions',
-            width: '10%',
+            width: 110,
             render: (_value: unknown, record: Announcement) => (
-              <Button type="link" onClick={() => openEditModal(record)}>
-                Редактировать
-              </Button>
+              <div className="admin-announcements-page__table-actions">
+                <Tooltip title="Редактировать">
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<EditOutlined />}
+                    onClick={() => openEditModal(record)}
+                  />
+                </Tooltip>
+                <Popconfirm
+                  title="Удалить объявление?"
+                  description="Это действие нельзя отменить."
+                  okText="Удалить"
+                  cancelText="Отмена"
+                  onConfirm={() => void handleDelete(record.id)}
+                >
+                  <Tooltip title="Удалить">
+                    <Button
+                      type="text"
+                      size="small"
+                      danger
+                      icon={<DeleteOutlined />}
+                      loading={deletingId === record.id}
+                    />
+                  </Tooltip>
+                </Popconfirm>
+              </div>
             ),
           },
         ]}

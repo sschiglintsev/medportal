@@ -1,12 +1,16 @@
-import { MenuOutlined } from '@ant-design/icons';
+import { DownOutlined, MenuOutlined } from '@ant-design/icons';
 import { Button, Descriptions, Dropdown, Form, Input, Modal, Select, Tag, message } from 'antd';
 import type { MenuProps } from 'antd';
 import { useEffect, useState } from 'react';
 
 import { userHasCabinetAccess } from '../../Core/cabinetAccess';
+import { fetchAhchRequestPublic } from '../../Core/services/ahch-request.service';
+import type { PublicAhchRequest } from '../../Core/services/ahch-request.service';
 import { fetchRegistrationRoles, login, register } from '../../Core/services/auth.service';
 import { fetchItRequestPublic } from '../../Core/services/it-request.service';
 import type { PublicItRequest } from '../../Core/services/it-request.service';
+import { fetchMetrologistRequestPublic } from '../../Core/services/metrologist-request.service';
+import type { PublicMetrologistRequest } from '../../Core/services/metrologist-request.service';
 import { useAppStore } from '../../Core/store/app.store';
 import type { RoleOption } from '../../Core/types/common';
 import './Header.scss';
@@ -53,6 +57,16 @@ export function Header() {
   const [itRequest, setItRequest] = useState<PublicItRequest | null>(null);
   const [itLoading, setItLoading] = useState(false);
   const [itError, setItError] = useState<string | null>(null);
+  const [metrologistStatusOpen, setMetrologistStatusOpen] = useState(false);
+  const [metrologistRequestId, setMetrologistRequestId] = useState('');
+  const [metrologistRequest, setMetrologistRequest] = useState<PublicMetrologistRequest | null>(null);
+  const [metrologistLoading, setMetrologistLoading] = useState(false);
+  const [metrologistError, setMetrologistError] = useState<string | null>(null);
+  const [ahchStatusOpen, setAhchStatusOpen] = useState(false);
+  const [ahchRequestId, setAhchRequestId] = useState('');
+  const [ahchRequest, setAhchRequest] = useState<PublicAhchRequest | null>(null);
+  const [ahchLoading, setAhchLoading] = useState(false);
+  const [ahchError, setAhchError] = useState<string | null>(null);
 
   const handleItRequestSearch = async () => {
     const id = Number(itRequestId.trim());
@@ -78,6 +92,58 @@ export function Header() {
     setItRequestId('');
     setItRequest(null);
     setItError(null);
+  };
+
+  const handleMetrologistRequestSearch = async () => {
+    const id = Number(metrologistRequestId.trim());
+    if (!id || isNaN(id)) {
+      setMetrologistError('Введите корректный номер заявки');
+      return;
+    }
+    setMetrologistLoading(true);
+    setMetrologistError(null);
+    setMetrologistRequest(null);
+    try {
+      const data = await fetchMetrologistRequestPublic(id);
+      setMetrologistRequest(data);
+    } catch {
+      setMetrologistError('Заявка не найдена. Проверьте номер и попробуйте снова.');
+    } finally {
+      setMetrologistLoading(false);
+    }
+  };
+
+  const handleMetrologistStatusClose = () => {
+    setMetrologistStatusOpen(false);
+    setMetrologistRequestId('');
+    setMetrologistRequest(null);
+    setMetrologistError(null);
+  };
+
+  const handleAhchRequestSearch = async () => {
+    const id = Number(ahchRequestId.trim());
+    if (!id || isNaN(id)) {
+      setAhchError('Введите корректный номер заявки');
+      return;
+    }
+    setAhchLoading(true);
+    setAhchError(null);
+    setAhchRequest(null);
+    try {
+      const data = await fetchAhchRequestPublic(id);
+      setAhchRequest(data);
+    } catch {
+      setAhchError('Заявка не найдена. Проверьте номер и попробуйте снова.');
+    } finally {
+      setAhchLoading(false);
+    }
+  };
+
+  const handleAhchStatusClose = () => {
+    setAhchStatusOpen(false);
+    setAhchRequestId('');
+    setAhchRequest(null);
+    setAhchError(null);
   };
   const user = useAppStore((state) => state.user);
   const setAuth = useAppStore((state) => state.setAuth);
@@ -141,7 +207,15 @@ export function Header() {
     { key: 'hero', label: <a href="#hero">Главные</a> },
     { key: 'news', label: <a href="#news">Новости</a> },
     { key: 'documents', label: <a href="#documents">Документы</a> },
-    { key: 'it-status', label: 'Статус заявки ИТ' },
+    {
+      key: 'status-group',
+      label: 'Статус заявок',
+      children: [
+        { key: 'it-status', label: 'Заявка в ИТ' },
+        { key: 'metrologist-status', label: 'Заявка метрологу' },
+        { key: 'ahch-status', label: 'Заявка в АХЧ' },
+      ],
+    },
     { type: 'divider' },
     ...(user
       ? [
@@ -173,8 +247,36 @@ export function Header() {
       setItStatusOpen(true);
       return;
     }
+    if (key === 'metrologist-status') {
+      setMetrologistStatusOpen(true);
+      return;
+    }
+    if (key === 'ahch-status') {
+      setAhchStatusOpen(true);
+      return;
+    }
     if (key === 'logout') {
       clearAuth();
+    }
+  };
+
+  const statusMenuItems: MenuProps['items'] = [
+    { key: 'it-status', label: 'Заявка в ИТ' },
+    { key: 'metrologist-status', label: 'Заявка метрологу' },
+    { key: 'ahch-status', label: 'Заявка в АХЧ' },
+  ];
+
+  const onStatusMenuClick: MenuProps['onClick'] = ({ key }) => {
+    if (key === 'it-status') {
+      setItStatusOpen(true);
+      return;
+    }
+    if (key === 'metrologist-status') {
+      setMetrologistStatusOpen(true);
+      return;
+    }
+    if (key === 'ahch-status') {
+      setAhchStatusOpen(true);
     }
   };
 
@@ -203,7 +305,11 @@ export function Header() {
           </nav>
 
           <div className="promo-header__actions">
-            <Button onClick={() => setItStatusOpen(true)}>Статус заявки ИТ</Button>
+            <Dropdown menu={{ items: statusMenuItems, onClick: onStatusMenuClick }} trigger={['click']}>
+              <Button>
+                Статус заявок <DownOutlined />
+              </Button>
+            </Dropdown>
             {user ? (
               <>
                 <span className="promo-header__user">{user.fullName}</span>
@@ -342,6 +448,99 @@ export function Header() {
             <Descriptions.Item label="Описание">{itRequest.request_text}</Descriptions.Item>
             {itRequest.comment && (
               <Descriptions.Item label="Комментарий ИТ отдела">{itRequest.comment}</Descriptions.Item>
+            )}
+          </Descriptions>
+        )}
+      </Modal>
+      <Modal
+        title="Статус заявки метрологу"
+        open={metrologistStatusOpen}
+        onCancel={handleMetrologistStatusClose}
+        footer={null}
+        destroyOnClose
+      >
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          <Input
+            placeholder="Введите номер заявки"
+            value={metrologistRequestId}
+            onChange={(e) => {
+              setMetrologistRequestId(e.target.value);
+              setMetrologistError(null);
+              setMetrologistRequest(null);
+            }}
+            onPressEnter={() => void handleMetrologistRequestSearch()}
+            type="number"
+            min={1}
+          />
+          <Button type="primary" onClick={() => void handleMetrologistRequestSearch()} loading={metrologistLoading}>
+            Найти
+          </Button>
+        </div>
+
+        {metrologistError && (
+          <p style={{ color: '#ff4d4f', marginBottom: 12 }}>{metrologistError}</p>
+        )}
+
+        {metrologistRequest && (
+          <Descriptions bordered column={1} size="small">
+            <Descriptions.Item label="Номер заявки">#{metrologistRequest.id}</Descriptions.Item>
+            <Descriptions.Item label="Статус">
+              <Tag color={STATUS_COLORS[metrologistRequest.status] ?? 'default'}>
+                {STATUS_LABELS[metrologistRequest.status] ?? metrologistRequest.status}
+              </Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label="ФИО">{metrologistRequest.full_name}</Descriptions.Item>
+            <Descriptions.Item label="Отделение">{metrologistRequest.department}</Descriptions.Item>
+            <Descriptions.Item label="Кабинет">{metrologistRequest.location}</Descriptions.Item>
+            <Descriptions.Item label="Описание">{metrologistRequest.request_text}</Descriptions.Item>
+            {metrologistRequest.comment && (
+              <Descriptions.Item label="Комментарий метролога">{metrologistRequest.comment}</Descriptions.Item>
+            )}
+          </Descriptions>
+        )}
+      </Modal>
+      <Modal
+        title="Статус заявки в АХЧ"
+        open={ahchStatusOpen}
+        onCancel={handleAhchStatusClose}
+        footer={null}
+        destroyOnClose
+      >
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          <Input
+            placeholder="Введите номер заявки"
+            value={ahchRequestId}
+            onChange={(e) => {
+              setAhchRequestId(e.target.value);
+              setAhchError(null);
+              setAhchRequest(null);
+            }}
+            onPressEnter={() => void handleAhchRequestSearch()}
+            type="number"
+            min={1}
+          />
+          <Button type="primary" onClick={() => void handleAhchRequestSearch()} loading={ahchLoading}>
+            Найти
+          </Button>
+        </div>
+
+        {ahchError && (
+          <p style={{ color: '#ff4d4f', marginBottom: 12 }}>{ahchError}</p>
+        )}
+
+        {ahchRequest && (
+          <Descriptions bordered column={1} size="small">
+            <Descriptions.Item label="Номер заявки">#{ahchRequest.id}</Descriptions.Item>
+            <Descriptions.Item label="Статус">
+              <Tag color={STATUS_COLORS[ahchRequest.status] ?? 'default'}>
+                {STATUS_LABELS[ahchRequest.status] ?? ahchRequest.status}
+              </Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label="Адрес">{ahchRequest.address}</Descriptions.Item>
+            <Descriptions.Item label="Отделение">{ahchRequest.department}</Descriptions.Item>
+            <Descriptions.Item label="Описание">{ahchRequest.request_text}</Descriptions.Item>
+            {ahchRequest.comment && (
+              <Descriptions.Item label="Комментарий АХЧ">{ahchRequest.comment}</Descriptions.Item>
             )}
           </Descriptions>
         )}

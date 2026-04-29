@@ -2,16 +2,16 @@ import { Alert, Button, Form, Input, Modal, Select, Typography, message } from '
 import { useEffect, useState } from 'react';
 
 import { fetchDepartments } from '../../Core/services/incident.service';
-import { createItRequest } from '../../Core/services/it-request.service';
+import { createMetrologistRequest } from '../../Core/services/metrologist-request.service';
 import type { Department } from '../../Core/types/common';
-import './ItRequestModal.scss';
+import './MetrologistRequestModal.scss';
 
-type ItRequestModalProps = {
+type MetrologistRequestModalProps = {
   open: boolean;
   onClose: () => void;
 };
 
-type ItRequestFormValues = {
+type MetrologistRequestFormValues = {
   full_name: string;
   phone: string;
   department: string;
@@ -48,8 +48,8 @@ const formatPhoneMask = (value: string): string => {
   return formattedPhone;
 };
 
-export function ItRequestModal({ open, onClose }: ItRequestModalProps) {
-  const [form] = Form.useForm<ItRequestFormValues>();
+export function MetrologistRequestModal({ open, onClose }: MetrologistRequestModalProps) {
+  const [form] = Form.useForm<MetrologistRequestFormValues>();
   const [submitting, setSubmitting] = useState(false);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [createdRequestId, setCreatedRequestId] = useState<number | null>(null);
@@ -79,12 +79,12 @@ export function ItRequestModal({ open, onClose }: ItRequestModalProps) {
     onClose();
   };
 
-  const onFinish = async (values: ItRequestFormValues) => {
+  const onFinish = async (values: MetrologistRequestFormValues) => {
     setSubmitting(true);
     try {
-      const createdRequest = await createItRequest(values);
+      const createdRequest = await createMetrologistRequest(values);
       setCreatedRequestId(createdRequest.id);
-      message.success('Заявка в ИТ отправлена');
+      message.success('Заявка метрологу отправлена');
     } catch {
       message.error('Не удалось отправить заявку');
     } finally {
@@ -94,16 +94,16 @@ export function ItRequestModal({ open, onClose }: ItRequestModalProps) {
 
   return (
     <Modal
-      title="Заявка в отдел ИТ"
+      title="Заявка метрологу"
       open={open}
       onCancel={handleModalClose}
       footer={null}
       width={700}
-      wrapClassName="it-request-modal-wrapper"
+      wrapClassName="metrologist-request-modal-wrapper"
       destroyOnClose
     >
       {createdRequestId ? (
-        <div className="it-request-modal__success">
+        <div className="metrologist-request-modal__success">
           <Alert
             type="success"
             showIcon
@@ -122,7 +122,7 @@ export function ItRequestModal({ open, onClose }: ItRequestModalProps) {
           </Button>
         </div>
       ) : (
-        <Form form={form} layout="vertical" onFinish={onFinish} className="it-request-modal">
+        <Form form={form} layout="vertical" onFinish={onFinish} className="metrologist-request-modal">
           <Form.Item name="full_name" label="ФИО" rules={[{ required: true, message: 'Введите ФИО' }]}>
             <Input />
           </Form.Item>
