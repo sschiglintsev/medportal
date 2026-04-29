@@ -17,7 +17,12 @@ import { errorHandler } from './middlewares/error.middleware';
 
 const app = express();
 
-const defaultAllowedOrigins = ['http://localhost:5173', 'http://127.0.0.1:5173'];
+const defaultAllowedOrigins = [
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://s29-webportal.b17.local',
+  'https://s29-webportal.b17.local',
+];
 const envAllowedOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',').map((origin) => origin.trim())
   : [];
