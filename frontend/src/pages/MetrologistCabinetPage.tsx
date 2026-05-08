@@ -1,6 +1,6 @@
 import { ExperimentOutlined } from '@ant-design/icons';
 import { Button, Input, List, Menu, Modal, Select, Space, Tag, Typography, message } from 'antd';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { formatDateTime } from '../Core/date.utils';
 import {
@@ -44,6 +44,8 @@ export function MetrologistCabinetPage() {
   const [statusLoading, setStatusLoading] = useState(false);
   const [commentLoading, setCommentLoading] = useState(false);
   const [commentText, setCommentText] = useState('');
+  const [filterStatus, setFilterStatus] = useState<MetrologistRequestStatus | null>(null);
+  const [filterDepartment, setFilterDepartment] = useState<string | null>(null);
 
   const loadRequests = useCallback(async () => {
     if (!token) {
@@ -64,6 +66,22 @@ export function MetrologistCabinetPage() {
   useEffect(() => {
     void loadRequests();
   }, [loadRequests]);
+
+  const departmentOptions = useMemo(
+    () =>
+      Array.from(new Set(items.map((it) => it.department).filter(Boolean))).sort().map((d) => ({
+        value: d,
+        label: d,
+      })),
+    [items],
+  );
+
+  const filteredItems = useMemo(() => {
+    let result = items;
+    if (filterStatus) result = result.filter((it) => it.status === filterStatus);
+    if (filterDepartment) result = result.filter((it) => it.department === filterDepartment);
+    return result;
+  }, [items, filterStatus, filterDepartment]);
 
   const handleStatusChange = async (newStatus: MetrologistRequestStatus) => {
     if (!selectedItem || !token) {
@@ -120,9 +138,32 @@ export function MetrologistCabinetPage() {
           <Typography.Title level={4} className="metrologist-cabinet-page__title">
             Заявки метрологу
           </Typography.Title>
+          <Space size={10} wrap className="metrologist-cabinet-page__filters">
+            <Select
+              placeholder="Фильтр по статусу"
+              allowClear
+              value={filterStatus ?? undefined}
+              options={STATUS_OPTIONS}
+              onChange={(val) => setFilterStatus(val ?? null)}
+              style={{ minWidth: 180 }}
+            />
+            <Select
+              placeholder="Фильтр по отделению"
+              allowClear
+              showSearch
+              value={filterDepartment ?? undefined}
+              options={departmentOptions}
+              onChange={(val) => setFilterDepartment(val ?? null)}
+              style={{ minWidth: 220 }}
+            />
+            <Button onClick={() => { setFilterStatus(null); setFilterDepartment(null); }}>Сбросить</Button>
+            <Button type="primary" onClick={() => void loadRequests()} loading={loading}>
+              Обновить
+            </Button>
+          </Space>
           <List
             loading={loading}
-            dataSource={items}
+            dataSource={filteredItems}
             locale={{ emptyText: 'Пока нет заявок метрологу' }}
             renderItem={(item) => (
               <List.Item

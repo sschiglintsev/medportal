@@ -13,7 +13,7 @@ const ahchRequestRouter = Router();
 
 ahchRequestRouter.post('/ahch-requests', createAhchRequest);
 ahchRequestRouter.get('/ahch-requests/:id/public', getAhchRequestByIdPublic);
-ahchRequestRouter.get('/ahch-requests', requireAuth, requireRoles(['facility', 'administrator']), getAhchRequests);
+ahchRequestRouter.get('/ahch-requests', requireAuth, requireRoles(['facility', 'administrator', 'chief_doctor']), getAhchRequests);
 ahchRequestRouter.patch(
   '/ahch-requests/:id/status',
   requireAuth,

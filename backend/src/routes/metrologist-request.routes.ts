@@ -16,7 +16,7 @@ metrologistRequestRouter.get('/metrologist-requests/:id/public', getMetrologistR
 metrologistRequestRouter.get(
   '/metrologist-requests',
   requireAuth,
-  requireRoles(['metrologist', 'administrator']),
+  requireRoles(['metrologist', 'administrator', 'chief_doctor']),
   getMetrologistRequests,
 );
 metrologistRequestRouter.patch(

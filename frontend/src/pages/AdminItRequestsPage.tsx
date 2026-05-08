@@ -42,6 +42,7 @@ export function AdminItRequestsPage() {
   const [statusLoading, setStatusLoading] = useState(false);
   const [selectedItem, setSelectedItem] = useState<ItRequest | null>(null);
   const [filterStatus, setFilterStatus] = useState<ItRequestStatus | null>(null);
+  const [filterDepartment, setFilterDepartment] = useState<string | null>(null);
   const [commentText, setCommentText] = useState('');
   const [commentLoading, setCommentLoading] = useState(false);
   const token = useAppStore((state) => state.token);
@@ -69,10 +70,21 @@ export function AdminItRequestsPage() {
     void loadRequests();
   }, [loadRequests]);
 
-  const filteredItems = useMemo(
-    () => (filterStatus ? items.filter((it) => it.status === filterStatus) : items),
-    [items, filterStatus],
+  const departmentOptions = useMemo(
+    () =>
+      Array.from(new Set(items.map((it) => it.department).filter(Boolean))).sort().map((d) => ({
+        value: d,
+        label: d,
+      })),
+    [items],
   );
+
+  const filteredItems = useMemo(() => {
+    let result = items;
+    if (filterStatus) result = result.filter((it) => it.status === filterStatus);
+    if (filterDepartment) result = result.filter((it) => it.department === filterDepartment);
+    return result;
+  }, [items, filterStatus, filterDepartment]);
 
   const handleCommentSave = async () => {
     if (!selectedItem || !token) return;
@@ -117,7 +129,16 @@ export function AdminItRequestsPage() {
           onChange={(val) => setFilterStatus(val ?? null)}
           style={{ minWidth: 180 }}
         />
-        <Button onClick={() => setFilterStatus(null)}>Сбросить</Button>
+        <Select
+          placeholder="Фильтр по отделению"
+          allowClear
+          showSearch
+          value={filterDepartment ?? undefined}
+          options={departmentOptions}
+          onChange={(val) => setFilterDepartment(val ?? null)}
+          style={{ minWidth: 220 }}
+        />
+        <Button onClick={() => { setFilterStatus(null); setFilterDepartment(null); }}>Сбросить</Button>
         <Button type="primary" onClick={() => void loadRequests()} loading={loading}>
           Обновить
         </Button>

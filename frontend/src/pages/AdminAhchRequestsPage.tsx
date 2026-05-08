@@ -2,11 +2,11 @@ import { Button, List, Modal, Select, Space, Tag, Typography, message } from 'an
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { formatDateTime } from '../Core/date.utils';
-import { fetchMetrologistRequests } from '../Core/services/metrologist-request.service';
-import type { MetrologistRequestStatus } from '../Core/services/metrologist-request.service';
+import { fetchAhchRequests } from '../Core/services/ahch-request.service';
+import type { AhchRequestStatus } from '../Core/services/ahch-request.service';
 import { useAppStore } from '../Core/store/app.store';
-import type { MetrologistRequest } from '../Core/types/common';
-import './AdminMetrologistRequestsPage.scss';
+import type { AhchRequest } from '../Core/types/common';
+import './AdminAhchRequestsPage.scss';
 
 const STATUS_LABELS: Record<string, string> = {
   new: 'Новая',
@@ -22,7 +22,7 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: 'red',
 };
 
-const STATUS_OPTIONS = (Object.keys(STATUS_LABELS) as MetrologistRequestStatus[]).map((key) => ({
+const STATUS_OPTIONS = (Object.keys(STATUS_LABELS) as AhchRequestStatus[]).map((key) => ({
   value: key,
   label: STATUS_LABELS[key],
 }));
@@ -31,25 +31,22 @@ function StatusTag({ status }: { status: string }) {
   return <Tag color={STATUS_COLORS[status] ?? 'default'}>{STATUS_LABELS[status] ?? status}</Tag>;
 }
 
-export function AdminMetrologistRequestsPage() {
+export function AdminAhchRequestsPage() {
   const token = useAppStore((state) => state.token);
-  const [items, setItems] = useState<MetrologistRequest[]>([]);
+  const [items, setItems] = useState<AhchRequest[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<MetrologistRequest | null>(null);
-  const [filterStatus, setFilterStatus] = useState<MetrologistRequestStatus | null>(null);
+  const [selectedItem, setSelectedItem] = useState<AhchRequest | null>(null);
+  const [filterStatus, setFilterStatus] = useState<AhchRequestStatus | null>(null);
   const [filterDepartment, setFilterDepartment] = useState<string | null>(null);
 
   const loadRequests = useCallback(async () => {
-    if (!token) {
-      return;
-    }
-
+    if (!token) return;
     setLoading(true);
     try {
-      const data = await fetchMetrologistRequests({ token });
+      const data = await fetchAhchRequests({ token });
       setItems(data);
     } catch {
-      message.error('Не удалось загрузить заявки метрологу');
+      message.error('Не удалось загрузить заявки в АХЧ');
     } finally {
       setLoading(false);
     }
@@ -76,8 +73,8 @@ export function AdminMetrologistRequestsPage() {
   }, [items, filterStatus, filterDepartment]);
 
   return (
-    <section className="admin-metrologist-requests-page">
-      <Space size={10} wrap className="admin-metrologist-requests-page__filters">
+    <section className="admin-ahch-requests-page">
+      <Space size={10} wrap className="admin-ahch-requests-page__filters">
         <Select
           placeholder="Фильтр по статусу"
           allowClear
@@ -100,20 +97,21 @@ export function AdminMetrologistRequestsPage() {
           Обновить
         </Button>
       </Space>
+
       <List
         loading={loading}
         dataSource={filteredItems}
-        locale={{ emptyText: 'Пока нет заявок метрологу' }}
+        locale={{ emptyText: 'Пока нет заявок в АХЧ' }}
         renderItem={(item) => (
-          <List.Item className="admin-metrologist-requests-page__item" onClick={() => setSelectedItem(item)}>
-            <div className="admin-metrologist-requests-page__main">
-              <div className="admin-metrologist-requests-page__request-title">#{item.id} — {item.full_name}</div>
-              <div className="admin-metrologist-requests-page__meta">
+          <List.Item className="admin-ahch-requests-page__item" onClick={() => setSelectedItem(item)}>
+            <div className="admin-ahch-requests-page__main">
+              <div className="admin-ahch-requests-page__title">#{item.id} — {item.address}</div>
+              <div className="admin-ahch-requests-page__meta">
                 <span>{item.department}</span>
-                <span>Кабинет: {item.location}</span>
+                <span>Тел.: {item.employee_phone}</span>
                 <span>{formatDateTime(item.created_at)}</span>
               </div>
-              <Typography.Paragraph ellipsis={{ rows: 2 }} className="admin-metrologist-requests-page__text">
+              <Typography.Paragraph ellipsis={{ rows: 2 }} className="admin-ahch-requests-page__text">
                 {item.request_text}
               </Typography.Paragraph>
             </div>
@@ -123,22 +121,27 @@ export function AdminMetrologistRequestsPage() {
       />
 
       <Modal
-        title={selectedItem ? `Заявка метрологу #${selectedItem.id}` : 'Заявка метрологу'}
+        title={selectedItem ? `Заявка в АХЧ #${selectedItem.id}` : 'Заявка в АХЧ'}
         open={Boolean(selectedItem)}
         onCancel={() => setSelectedItem(null)}
         footer={null}
         destroyOnClose
       >
         {selectedItem ? (
-          <div className="admin-metrologist-requests-page__details">
-            <p><strong>ФИО:</strong> {selectedItem.full_name}</p>
-            <p><strong>Телефон:</strong> {selectedItem.phone}</p>
+          <div className="admin-ahch-requests-page__details">
+            <p><strong>Адрес:</strong> {selectedItem.address}</p>
             <p><strong>Отделение:</strong> {selectedItem.department}</p>
-            <p><strong>Кабинет:</strong> {selectedItem.location}</p>
+            <p><strong>Телефон сотрудника:</strong> {selectedItem.employee_phone}</p>
             <p><strong>Статус:</strong> <StatusTag status={selectedItem.status} /></p>
             <p><strong>Создано:</strong> {formatDateTime(selectedItem.created_at)}</p>
             <p><strong>Описание:</strong></p>
             <Typography.Paragraph>{selectedItem.request_text}</Typography.Paragraph>
+            {selectedItem.comment && (
+              <>
+                <p><strong>Комментарий АХЧ:</strong></p>
+                <Typography.Paragraph>{selectedItem.comment}</Typography.Paragraph>
+              </>
+            )}
           </div>
         ) : null}
       </Modal>
