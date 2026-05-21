@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 
 import { withDbClient } from '../db';
+import { notifyRoleUsers } from '../services/max-bot.service';
 
 const ALLOWED_STATUSES = ['new', 'in_progress', 'done', 'cancelled'] as const;
 type AhchRequestStatus = (typeof ALLOWED_STATUSES)[number];
@@ -34,7 +35,14 @@ export async function createAhchRequest(req: Request, res: Response, next: NextF
       ),
     );
 
-    res.status(201).json(result.rows[0]);
+    const created = result.rows[0] as { id: number; status: string; created_at: string };
+
+    void notifyRoleUsers(
+      'facility',
+      `Новая заявка в АХЧ #${created.id}\nАдрес: ${address}\nОтделение: ${department}\nТелефон: ${employeePhone}\nОписание: ${requestText.slice(0, 200)}`,
+    );
+
+    res.status(201).json(created);
   } catch (error) {
     next(error);
   }

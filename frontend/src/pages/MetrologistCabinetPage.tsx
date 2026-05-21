@@ -1,7 +1,8 @@
-import { ExperimentOutlined } from '@ant-design/icons';
+import { BellOutlined, ExperimentOutlined } from '@ant-design/icons';
 import { Button, Input, List, Menu, Modal, Select, Space, Tag, Typography, message } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { MaxLinkCard } from '../components/MaxLinkCard/MaxLinkCard';
 import { formatDateTime } from '../Core/date.utils';
 import {
   fetchMetrologistRequests,
@@ -36,8 +37,11 @@ const STATUS_OPTIONS = (Object.keys(STATUS_LABELS) as MetrologistRequestStatus[]
   label: STATUS_LABELS[key],
 }));
 
+type Section = 'metrologist-requests' | 'notifications';
+
 export function MetrologistCabinetPage() {
   const token = useAppStore((state) => state.token);
+  const [activeSection, setActiveSection] = useState<Section>('metrologist-requests');
   const [items, setItems] = useState<MetrologistRequest[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedItem, setSelectedItem] = useState<MetrologistRequest | null>(null);
@@ -127,14 +131,25 @@ export function MetrologistCabinetPage() {
         <aside className="metrologist-cabinet-page__sidebar">
           <Menu
             mode="inline"
-            selectedKeys={['metrologist-requests']}
+            selectedKeys={[activeSection]}
+            onClick={({ key }) => setActiveSection(key as Section)}
             items={[
               { key: 'metrologist-requests', icon: <ExperimentOutlined />, label: 'Заявки метрологу' },
+              { key: 'notifications', icon: <BellOutlined />, label: 'Уведомления Max' },
             ]}
           />
         </aside>
 
         <div className="metrologist-cabinet-page__content">
+          {activeSection === 'notifications' ? (
+            <>
+              <Typography.Title level={4} className="metrologist-cabinet-page__title">
+                Уведомления Max
+              </Typography.Title>
+              <MaxLinkCard />
+            </>
+          ) : (
+          <>
           <Typography.Title level={4} className="metrologist-cabinet-page__title">
             Заявки метрологу
           </Typography.Title>
@@ -188,6 +203,8 @@ export function MetrologistCabinetPage() {
               </List.Item>
             )}
           />
+          </>
+          )}
         </div>
       </div>
 

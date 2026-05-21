@@ -11,6 +11,7 @@ import { ahchRequestRouter } from './routes/ahch-request.routes';
 import { documentRouter } from './routes/document.routes';
 import { itRequestRouter } from './routes/it-request.routes';
 import { metrologistRequestRouter } from './routes/metrologist-request.routes';
+import { maxRouter } from './routes/max.routes';
 import { organizationRouter } from './routes/organization.routes';
 import { userRouter } from './routes/user.routes';
 import { errorHandler } from './middlewares/error.middleware';
@@ -58,6 +59,7 @@ app.use('/api', itRequestRouter);
 app.use('/api', metrologistRequestRouter);
 app.use('/api', organizationRouter);
 app.use('/api', userRouter);
+app.use('/api', maxRouter);
 
 app.use(errorHandler);
 

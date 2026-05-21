@@ -221,6 +221,18 @@ async function migrateUsersTable(client: PoolClient): Promise<void> {
     ADD CONSTRAINT users_role_fkey
     FOREIGN KEY (role) REFERENCES roles(value)
   `);
+
+  // Поля для привязки Max
+  await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS max_chat_id VARCHAR(50)`);
+  await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS max_username VARCHAR(255)`);
+  await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS max_verified_at TIMESTAMP`);
+  await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS max_link_code_hash TEXT`);
+  await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS max_link_code_expires_at TIMESTAMP`);
+  await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS max_link_pending_user_id VARCHAR(50)`);
+  await client.query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS max_notifications_enabled BOOLEAN NOT NULL DEFAULT TRUE
+  `);
 }
 
 async function ensureUsersTable(client: PoolClient): Promise<void> {

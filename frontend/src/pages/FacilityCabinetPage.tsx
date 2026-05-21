@@ -1,7 +1,8 @@
-import { HomeOutlined } from '@ant-design/icons';
+import { BellOutlined, HomeOutlined } from '@ant-design/icons';
 import { Button, Input, List, Menu, Modal, Select, Space, Tag, Typography, message } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { MaxLinkCard } from '../components/MaxLinkCard/MaxLinkCard';
 import { formatDateTime } from '../Core/date.utils';
 import {
   fetchAhchRequests,
@@ -37,8 +38,11 @@ function StatusTag({ status }: { status: string }) {
   return <Tag color={STATUS_COLORS[typedStatus] ?? 'default'}>{STATUS_LABELS[typedStatus] ?? status}</Tag>;
 }
 
+type Section = 'ahch-requests' | 'notifications';
+
 export function FacilityCabinetPage() {
   const token = useAppStore((state) => state.token);
+  const [activeSection, setActiveSection] = useState<Section>('ahch-requests');
   const [items, setItems] = useState<AhchRequest[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedItem, setSelectedItem] = useState<AhchRequest | null>(null);
@@ -125,12 +129,26 @@ export function FacilityCabinetPage() {
         <aside className="facility-cabinet-page__sidebar">
           <Menu
             mode="inline"
-            selectedKeys={['ahch-requests']}
-            items={[{ key: 'ahch-requests', icon: <HomeOutlined />, label: 'Заявки в АХЧ' }]}
+            selectedKeys={[activeSection]}
+            onClick={({ key }) => setActiveSection(key as Section)}
+            items={[
+              { key: 'ahch-requests', icon: <HomeOutlined />, label: 'Заявки в АХЧ' },
+              { key: 'notifications', icon: <BellOutlined />, label: 'Уведомления Max' },
+            ]}
           />
         </aside>
 
         <div className="facility-cabinet-page__content">
+          {activeSection === 'notifications' ? (
+            <>
+              <Typography.Title level={4} className="facility-cabinet-page__title">
+                Уведомления Max
+              </Typography.Title>
+              <MaxLinkCard />
+            </>
+          ) : null}
+          {activeSection === 'ahch-requests' ? (
+          <>
           <Typography.Title level={4} className="facility-cabinet-page__title">
             Заявки в АХЧ
           </Typography.Title>
@@ -184,6 +202,8 @@ export function FacilityCabinetPage() {
               </List.Item>
             )}
           />
+          </>
+          ) : null}
         </div>
       </div>
 

@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 
 import { withDbClient } from '../db';
+import { notifyRoleUsers } from '../services/max-bot.service';
 
 type CreateIncidentBody = {
   incident_date: string;
@@ -151,7 +152,14 @@ export async function createIncident(req: Request, res: Response, next: NextFunc
       ),
     );
 
-    res.status(201).json(result.rows[0]);
+    const created = result.rows[0] as { id: number; status: string; created_at: string };
+
+    void notifyRoleUsers(
+      'quality_department',
+      `Новое нежелательное событие #${created.id}\nСотрудник: ${body.employee_fio}\nДолжность: ${body.employee_position}\nМесто: ${body.place}`,
+    );
+
+    res.status(201).json(created);
   } catch (error) {
     next(error);
   }

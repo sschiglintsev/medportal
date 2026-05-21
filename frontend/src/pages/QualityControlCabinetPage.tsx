@@ -1,15 +1,18 @@
-import { FileTextOutlined, UnorderedListOutlined } from '@ant-design/icons';
+import { BellOutlined, FileTextOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import { Menu, Typography } from 'antd';
 import { useEffect, useState } from 'react';
 
 import { IncidentsRegistryPanel } from '../components/IncidentsRegistryPanel/IncidentsRegistryPanel';
+import { MaxLinkCard } from '../components/MaxLinkCard/MaxLinkCard';
 import { useAppStore } from '../Core/store/app.store';
 import { AdminDocumentsPage } from './AdminDocumentsPage';
 import './QualityControlCabinetPage.scss';
 
+type Section = 'incidents' | 'documents' | 'notifications';
+
 export function QualityControlCabinetPage() {
   const canManageDocuments = useAppStore((state) => state.user?.permissions?.canManageDocuments);
-  const [activeSection, setActiveSection] = useState<'incidents' | 'documents'>('incidents');
+  const [activeSection, setActiveSection] = useState<Section>('incidents');
 
   useEffect(() => {
     if (activeSection === 'documents' && !canManageDocuments) {
@@ -22,6 +25,7 @@ export function QualityControlCabinetPage() {
     ...(canManageDocuments
       ? [{ key: 'documents' as const, icon: <FileTextOutlined />, label: 'Документы' }]
       : []),
+    { key: 'notifications' as const, icon: <BellOutlined />, label: 'Уведомления Max' },
   ];
 
   return (
@@ -43,6 +47,13 @@ export function QualityControlCabinetPage() {
                 Документы
               </Typography.Title>
               <AdminDocumentsPage />
+            </>
+          ) : activeSection === 'notifications' ? (
+            <>
+              <Typography.Title level={4} className="quality-control-cabinet-page__title">
+                Уведомления Max
+              </Typography.Title>
+              <MaxLinkCard />
             </>
           ) : (
             <IncidentsRegistryPanel />

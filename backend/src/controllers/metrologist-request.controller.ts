@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 
 import { withDbClient } from '../db';
+import { notifyRoleUsers } from '../services/max-bot.service';
 
 const ALLOWED_STATUSES = ['new', 'in_progress', 'done', 'cancelled'] as const;
 type MetrologistRequestStatus = (typeof ALLOWED_STATUSES)[number];
@@ -36,7 +37,14 @@ export async function createMetrologistRequest(req: Request, res: Response, next
       ),
     );
 
-    res.status(201).json(result.rows[0]);
+    const created = result.rows[0] as { id: number; status: string; created_at: string };
+
+    void notifyRoleUsers(
+      'metrologist',
+      `Новая заявка метрологу #${created.id}\nОтделение: ${department}\nКабинет: ${location}\nТелефон: ${phone}\nОписание: ${requestText.slice(0, 200)}`,
+    );
+
+    res.status(201).json(created);
   } catch (error) {
     next(error);
   }

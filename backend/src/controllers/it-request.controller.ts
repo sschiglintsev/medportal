@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 
 import { withDbClient } from '../db';
+import { notifyRoleUsers } from '../services/max-bot.service';
 
 const ALLOWED_STATUSES = ['new', 'in_progress', 'done', 'cancelled'] as const;
 type ItRequestStatus = (typeof ALLOWED_STATUSES)[number];
@@ -36,7 +37,14 @@ export async function createItRequest(req: Request, res: Response, next: NextFun
       ),
     );
 
-    res.status(201).json(result.rows[0]);
+    const created = result.rows[0] as { id: number; status: string; created_at: string };
+
+    void notifyRoleUsers(
+      'it_department',
+      `Новая заявка в ИТ #${created.id}\nОтделение: ${department}\nКабинет: ${location}\nТелефон: ${phone}\nОписание: ${requestText.slice(0, 200)}`,
+    );
+
+    res.status(201).json(created);
   } catch (error) {
     next(error);
   }

@@ -1,0 +1,31 @@
+.max-link-card {
+  max-width: 520px;
+
+  &__row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  &__hint {
+    .ant-alert-message {
+      font-size: 13px;
+    }
+  }
+
+  &__steps {
+    margin: 6px 0 0;
+    padding-left: 18px;
+    font-size: 13px;
+
+    li {
+      margin-bottom: 2px;
+    }
+  }
+}
