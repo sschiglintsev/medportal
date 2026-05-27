@@ -8,6 +8,7 @@ type HeroSectionProps = {
   onOpenItRequestModal: () => void;
   onOpenAhchRequestModal: () => void;
   onOpenMetrologistRequestModal: () => void;
+  onOpenTransportRequestModal: () => void;
 };
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') ?? 'http://localhost:4000';
@@ -17,6 +18,7 @@ export function HeroSection({
   onOpenItRequestModal,
   onOpenAhchRequestModal,
   onOpenMetrologistRequestModal,
+  onOpenTransportRequestModal,
 }: HeroSectionProps) {
   const organization = useAppStore((state) => state.organization);
 
@@ -41,6 +43,7 @@ export function HeroSection({
           <Button onClick={onOpenItRequestModal}>Заявка в отдел ИТ</Button>
           <Button onClick={onOpenAhchRequestModal}>Заявка в АХЧ</Button>
           <Button onClick={onOpenMetrologistRequestModal}>Заявка метрологу</Button>
+          <Button onClick={onOpenTransportRequestModal}>Транспортная заявка</Button>
         </div>
       </div>
 

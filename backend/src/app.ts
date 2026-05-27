@@ -13,6 +13,7 @@ import { itRequestRouter } from './routes/it-request.routes';
 import { metrologistRequestRouter } from './routes/metrologist-request.routes';
 import { maxRouter } from './routes/max.routes';
 import { organizationRouter } from './routes/organization.routes';
+import { transportRequestRouter } from './routes/transport-request.routes';
 import { userRouter } from './routes/user.routes';
 import { errorHandler } from './middlewares/error.middleware';
 
@@ -60,6 +61,7 @@ app.use('/api', metrologistRequestRouter);
 app.use('/api', organizationRouter);
 app.use('/api', userRouter);
 app.use('/api', maxRouter);
+app.use('/api', transportRequestRouter);
 
 app.use(errorHandler);
 

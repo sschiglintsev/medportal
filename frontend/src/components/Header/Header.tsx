@@ -11,6 +11,8 @@ import { fetchItRequestPublic } from '../../Core/services/it-request.service';
 import type { PublicItRequest } from '../../Core/services/it-request.service';
 import { fetchMetrologistRequestPublic } from '../../Core/services/metrologist-request.service';
 import type { PublicMetrologistRequest } from '../../Core/services/metrologist-request.service';
+import { fetchTransportRequestPublic } from '../../Core/services/transport-request.service';
+import type { PublicTransportRequest } from '../../Core/services/transport-request.service';
 import { useAppStore } from '../../Core/store/app.store';
 import type { RoleOption } from '../../Core/types/common';
 import './Header.scss';
@@ -67,6 +69,12 @@ export function Header() {
   const [ahchRequest, setAhchRequest] = useState<PublicAhchRequest | null>(null);
   const [ahchLoading, setAhchLoading] = useState(false);
   const [ahchError, setAhchError] = useState<string | null>(null);
+
+  const [transportStatusOpen, setTransportStatusOpen] = useState(false);
+  const [transportRequestId, setTransportRequestId] = useState('');
+  const [transportRequest, setTransportRequest] = useState<PublicTransportRequest | null>(null);
+  const [transportLoading, setTransportLoading] = useState(false);
+  const [transportError, setTransportError] = useState<string | null>(null);
 
   const handleItRequestSearch = async () => {
     const id = Number(itRequestId.trim());
@@ -145,6 +153,32 @@ export function Header() {
     setAhchRequest(null);
     setAhchError(null);
   };
+
+  const handleTransportRequestSearch = async () => {
+    const id = Number(transportRequestId.trim());
+    if (!id || isNaN(id)) {
+      setTransportError('Введите корректный номер заявки');
+      return;
+    }
+    setTransportLoading(true);
+    setTransportError(null);
+    setTransportRequest(null);
+    try {
+      const data = await fetchTransportRequestPublic(id);
+      setTransportRequest(data);
+    } catch {
+      setTransportError('Заявка не найдена. Проверьте номер и попробуйте снова.');
+    } finally {
+      setTransportLoading(false);
+    }
+  };
+
+  const handleTransportStatusClose = () => {
+    setTransportStatusOpen(false);
+    setTransportRequestId('');
+    setTransportRequest(null);
+    setTransportError(null);
+  };
   const user = useAppStore((state) => state.user);
   const setAuth = useAppStore((state) => state.setAuth);
   const setPortalView = useAppStore((state) => state.setPortalView);
@@ -214,6 +248,7 @@ export function Header() {
         { key: 'it-status', label: 'Заявка в ИТ' },
         { key: 'metrologist-status', label: 'Заявка метрологу' },
         { key: 'ahch-status', label: 'Заявка в АХЧ' },
+        { key: 'transport-status', label: 'Транспортная заявка' },
       ],
     },
     { type: 'divider' },
@@ -255,6 +290,10 @@ export function Header() {
       setAhchStatusOpen(true);
       return;
     }
+    if (key === 'transport-status') {
+      setTransportStatusOpen(true);
+      return;
+    }
     if (key === 'logout') {
       clearAuth();
     }
@@ -264,6 +303,7 @@ export function Header() {
     { key: 'it-status', label: 'Заявка в ИТ' },
     { key: 'metrologist-status', label: 'Заявка метрологу' },
     { key: 'ahch-status', label: 'Заявка в АХЧ' },
+    { key: 'transport-status', label: 'Транспортная заявка' },
   ];
 
   const onStatusMenuClick: MenuProps['onClick'] = ({ key }) => {
@@ -277,6 +317,10 @@ export function Header() {
     }
     if (key === 'ahch-status') {
       setAhchStatusOpen(true);
+      return;
+    }
+    if (key === 'transport-status') {
+      setTransportStatusOpen(true);
     }
   };
 
@@ -541,6 +585,62 @@ export function Header() {
             <Descriptions.Item label="Описание">{ahchRequest.request_text}</Descriptions.Item>
             {ahchRequest.comment && (
               <Descriptions.Item label="Комментарий АХЧ">{ahchRequest.comment}</Descriptions.Item>
+            )}
+          </Descriptions>
+        )}
+      </Modal>
+      <Modal
+        title="Статус транспортной заявки"
+        open={transportStatusOpen}
+        onCancel={handleTransportStatusClose}
+        footer={null}
+        destroyOnClose
+      >
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          <Input
+            placeholder="Введите номер заявки"
+            value={transportRequestId}
+            onChange={(e) => {
+              setTransportRequestId(e.target.value);
+              setTransportError(null);
+              setTransportRequest(null);
+            }}
+            onPressEnter={() => void handleTransportRequestSearch()}
+            type="number"
+            min={1}
+          />
+          <Button type="primary" onClick={() => void handleTransportRequestSearch()} loading={transportLoading}>
+            Найти
+          </Button>
+        </div>
+
+        {transportError && (
+          <p style={{ color: '#ff4d4f', marginBottom: 12 }}>{transportError}</p>
+        )}
+
+        {transportRequest && (
+          <Descriptions bordered column={1} size="small">
+            <Descriptions.Item label="Номер заявки">#{transportRequest.id}</Descriptions.Item>
+            <Descriptions.Item label="Статус">
+              <Tag color={STATUS_COLORS[transportRequest.status] ?? 'default'}>
+                {STATUS_LABELS[transportRequest.status] ?? transportRequest.status}
+              </Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label="Отделение">{transportRequest.department}</Descriptions.Item>
+            <Descriptions.Item label="Инициатор">{transportRequest.initiator}</Descriptions.Item>
+            <Descriptions.Item label="Дата/время подачи">
+              {transportRequest.submission_date} {transportRequest.submission_time}
+            </Descriptions.Item>
+            <Descriptions.Item label="Маршрут">
+              {transportRequest.route_from} → {transportRequest.route_to}
+            </Descriptions.Item>
+            <Descriptions.Item label="Цель поездки">{transportRequest.purpose}</Descriptions.Item>
+            <Descriptions.Item label="Пассажиров">{transportRequest.passenger_count}</Descriptions.Item>
+            {transportRequest.special_notes && (
+              <Descriptions.Item label="Особые отметки">{transportRequest.special_notes}</Descriptions.Item>
+            )}
+            {transportRequest.comment && (
+              <Descriptions.Item label="Комментарий диспетчера">{transportRequest.comment}</Descriptions.Item>
             )}
           </Descriptions>
         )}

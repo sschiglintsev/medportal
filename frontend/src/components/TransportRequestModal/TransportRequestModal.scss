@@ -1,0 +1,14 @@
+.transport-request-modal {
+  &__row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 16px;
+
+  }
+
+  &__success {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+}

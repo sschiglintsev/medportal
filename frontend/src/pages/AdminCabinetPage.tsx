@@ -1,5 +1,6 @@
 import {
   ApartmentOutlined,
+  CarOutlined,
   ExperimentOutlined,
   FileTextOutlined,
   HomeOutlined,
@@ -21,6 +22,7 @@ import { AdminIncidentTypesPage } from './AdminIncidentTypesPage';
 import { AdminAhchRequestsPage } from './AdminAhchRequestsPage';
 import { AdminItRequestsPage } from './AdminItRequestsPage';
 import { AdminMetrologistRequestsPage } from './AdminMetrologistRequestsPage';
+import { AdminTransportRequestsPage } from './AdminTransportRequestsPage';
 import { AdminOrganizationPage } from './AdminOrganizationPage';
 import { AdminUsersPage } from './AdminUsersPage';
 import './AdminCabinetPage.scss';
@@ -33,6 +35,7 @@ type Section =
   | 'it-requests'
   | 'metrologist-requests'
   | 'ahch-requests'
+  | 'transport-requests'
   | 'incidents'
   | 'users'
   | 'organization';
@@ -45,6 +48,7 @@ const SECTION_TITLES: Record<Section, string> = {
   'it-requests': 'Заявки в ИТ',
   'metrologist-requests': 'Заявки метрологу',
   'ahch-requests': 'Заявки в АХЧ',
+  'transport-requests': 'Транспортные заявки',
   incidents: 'Нежелательные события',
   users: 'Пользователи',
   organization: 'Профиль организации',
@@ -61,6 +65,8 @@ export function AdminCabinetPage() {
         return <AdminMetrologistRequestsPage />;
       case 'ahch-requests':
         return <AdminAhchRequestsPage />;
+      case 'transport-requests':
+        return <AdminTransportRequestsPage />;
       case 'documents':
         return <AdminDocumentsPage />;
       case 'announcements':
@@ -94,6 +100,7 @@ export function AdminCabinetPage() {
               { key: 'it-requests', icon: <ToolOutlined />, label: 'Заявки в ИТ' },
               { key: 'metrologist-requests', icon: <ExperimentOutlined />, label: 'Заявки метрологу' },
               { key: 'ahch-requests', icon: <HomeOutlined />, label: 'Заявки в АХЧ' },
+              { key: 'transport-requests', icon: <CarOutlined />, label: 'Транспортные заявки' },
               { key: 'incidents', icon: <UnorderedListOutlined />, label: 'Нежелательные события' },
               { type: 'divider' },
               { key: 'users', icon: <TeamOutlined />, label: 'Пользователи' },

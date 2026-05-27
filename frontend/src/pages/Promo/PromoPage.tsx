@@ -8,6 +8,7 @@ import { HeroSection } from '../../components/HeroSection/HeroSection';
 import { IncidentReportModal } from '../../components/IncidentReportModal/IncidentReportModal';
 import { ItRequestModal } from '../../components/ItRequestModal/ItRequestModal';
 import { MetrologistRequestModal } from '../../components/MetrologistRequestModal/MetrologistRequestModal';
+import { TransportRequestModal } from '../../components/TransportRequestModal/TransportRequestModal';
 import { NewsSection } from '../../components/NewsSection/NewsSection';
 import './PromoPage.scss';
 
@@ -16,6 +17,7 @@ export function PromoPage() {
   const [itRequestModalOpen, setItRequestModalOpen] = useState(false);
   const [ahchRequestModalOpen, setAhchRequestModalOpen] = useState(false);
   const [metrologistRequestModalOpen, setMetrologistRequestModalOpen] = useState(false);
+  const [transportRequestModalOpen, setTransportRequestModalOpen] = useState(false);
 
   return (
     <div className="promo-page">
@@ -26,6 +28,7 @@ export function PromoPage() {
           onOpenItRequestModal={() => setItRequestModalOpen(true)}
           onOpenAhchRequestModal={() => setAhchRequestModalOpen(true)}
           onOpenMetrologistRequestModal={() => setMetrologistRequestModalOpen(true)}
+          onOpenTransportRequestModal={() => setTransportRequestModalOpen(true)}
         />
         <NewsSection />
         <DocumentsSection />
@@ -36,6 +39,10 @@ export function PromoPage() {
       <MetrologistRequestModal
         open={metrologistRequestModalOpen}
         onClose={() => setMetrologistRequestModalOpen(false)}
+      />
+      <TransportRequestModal
+        open={transportRequestModalOpen}
+        onClose={() => setTransportRequestModalOpen(false)}
       />
       <Footer />
     </div>

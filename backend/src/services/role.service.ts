@@ -164,6 +164,7 @@ async function upsertRoles(client: PoolClient): Promise<void> {
       ('Администратор',                'administrator',     TRUE,  TRUE,  FALSE, FALSE, TRUE,  TRUE,  TRUE,  TRUE,  FALSE),
       ('АХЧ',                          'facility',          TRUE,  FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE),
       ('Главный врач',                 'chief_doctor',      TRUE,  FALSE, FALSE, TRUE,  FALSE, FALSE, TRUE,  TRUE,  FALSE),
+      ('Диспетчер',                    'dispatcher',        TRUE,  FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE),
       ('ИТ отдел',                     'it_department',     TRUE,  FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, TRUE),
       ('Метролог',                     'metrologist',       TRUE,  FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE),
       ('Отдел кадров',                 'hr_department',     FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE),
@@ -220,6 +221,25 @@ async function migrateUsersTable(client: PoolClient): Promise<void> {
     ALTER TABLE users
     ADD CONSTRAINT users_role_fkey
     FOREIGN KEY (role) REFERENCES roles(value)
+  `);
+
+  // Таблица транспортных заявок
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS transport_requests (
+      id               SERIAL PRIMARY KEY,
+      department       VARCHAR(255) NOT NULL,
+      initiator        VARCHAR(255) NOT NULL,
+      submission_date  DATE         NOT NULL,
+      submission_time  TIME         NOT NULL,
+      route_from       VARCHAR(255) NOT NULL,
+      route_to         VARCHAR(255) NOT NULL,
+      purpose          TEXT         NOT NULL,
+      passenger_count  INTEGER      NOT NULL,
+      special_notes    TEXT,
+      status           VARCHAR(20)  NOT NULL DEFAULT 'new',
+      comment          TEXT,
+      created_at       TIMESTAMP    NOT NULL DEFAULT NOW()
+    )
   `);
 
   // Поля для привязки Max

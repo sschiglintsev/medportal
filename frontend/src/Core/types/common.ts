@@ -126,6 +126,22 @@ export type UserListItem = {
   created_at: string;
 };
 
+export type TransportRequest = {
+  id: number;
+  department: string;
+  initiator: string;
+  submission_date: string;
+  submission_time: string;
+  route_from: string;
+  route_to: string;
+  purpose: string;
+  passenger_count: number;
+  special_notes: string | null;
+  status: string;
+  comment: string | null;
+  created_at: string;
+};
+
 export type OrganizationProfile = {
   id: number;
   logo_url: string | null;

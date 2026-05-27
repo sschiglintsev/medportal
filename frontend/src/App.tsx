@@ -7,6 +7,7 @@ import { useAppStore } from './Core/store/app.store';
 import { MainLayout } from './layouts/MainLayout';
 import { AdminCabinetPage } from './pages/AdminCabinetPage';
 import { ChiefCabinetPage } from './pages/ChiefCabinetPage';
+import { DispatcherCabinetPage } from './pages/DispatcherCabinetPage';
 import { FacilityCabinetPage } from './pages/FacilityCabinetPage';
 import { ItDepartmentCabinetPage } from './pages/ItDepartmentCabinetPage';
 import { MetrologistCabinetPage } from './pages/MetrologistCabinetPage';
@@ -46,6 +47,9 @@ function App() {
     }
     if (user?.role === 'metrologist') {
       return <MetrologistCabinetPage />;
+    }
+    if (user?.role === 'dispatcher') {
+      return <DispatcherCabinetPage />;
     }
     return <AdminCabinetPage />;
   })();

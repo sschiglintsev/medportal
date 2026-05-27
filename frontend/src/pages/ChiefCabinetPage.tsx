@@ -1,4 +1,4 @@
-import { ExperimentOutlined, HomeOutlined, ToolOutlined, UnorderedListOutlined } from '@ant-design/icons';
+import { CarOutlined, ExperimentOutlined, HomeOutlined, ToolOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import { Menu, Typography } from 'antd';
 import { useState } from 'react';
 
@@ -6,15 +6,17 @@ import { IncidentsRegistryPanel } from '../components/IncidentsRegistryPanel/Inc
 import { AdminAhchRequestsPage } from './AdminAhchRequestsPage';
 import { AdminItRequestsPage } from './AdminItRequestsPage';
 import { AdminMetrologistRequestsPage } from './AdminMetrologistRequestsPage';
+import { AdminTransportRequestsPage } from './AdminTransportRequestsPage';
 import './ChiefCabinetPage.scss';
 
-type Section = 'incidents' | 'it-requests' | 'metrologist-requests' | 'ahch-requests';
+type Section = 'incidents' | 'it-requests' | 'metrologist-requests' | 'ahch-requests' | 'transport-requests';
 
 const SECTION_TITLES: Record<Section, string> = {
   incidents: 'Нежелательные события',
   'it-requests': 'Заявки в ИТ',
   'metrologist-requests': 'Заявки метрологу',
   'ahch-requests': 'Заявки в АХЧ',
+  'transport-requests': 'Транспортные заявки',
 };
 
 export function ChiefCabinetPage() {
@@ -33,6 +35,7 @@ export function ChiefCabinetPage() {
               { key: 'it-requests', icon: <ToolOutlined />, label: 'Заявки в ИТ' },
               { key: 'metrologist-requests', icon: <ExperimentOutlined />, label: 'Заявки метрологу' },
               { key: 'ahch-requests', icon: <HomeOutlined />, label: 'Заявки в АХЧ' },
+              { key: 'transport-requests', icon: <CarOutlined />, label: 'Транспортные заявки' },
             ]}
           />
         </aside>
@@ -44,6 +47,7 @@ export function ChiefCabinetPage() {
           {activeSection === 'it-requests' && <AdminItRequestsPage />}
           {activeSection === 'metrologist-requests' && <AdminMetrologistRequestsPage />}
           {activeSection === 'ahch-requests' && <AdminAhchRequestsPage />}
+          {activeSection === 'transport-requests' && <AdminTransportRequestsPage />}
           {activeSection === 'incidents' && <IncidentsRegistryPanel hideTitle />}
         </div>
       </div>
