@@ -15,6 +15,7 @@ import { maxRouter } from './routes/max.routes';
 import { organizationRouter } from './routes/organization.routes';
 import { transportRequestRouter } from './routes/transport-request.routes';
 import { userRouter } from './routes/user.routes';
+import { vehicleRouter } from './routes/vehicle.routes';
 import { errorHandler } from './middlewares/error.middleware';
 
 const app = express();
@@ -62,6 +63,7 @@ app.use('/api', organizationRouter);
 app.use('/api', userRouter);
 app.use('/api', maxRouter);
 app.use('/api', transportRequestRouter);
+app.use('/api', vehicleRouter);
 
 app.use(errorHandler);
 

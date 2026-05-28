@@ -72,6 +72,27 @@
   }
 }
 
+.dispatcher-cabinet-page__section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+
+  .dispatcher-cabinet-page__title {
+    margin: 0 !important;
+  }
+}
+
+.dispatcher-cabinet-page__item--vehicle {
+  align-items: center;
+}
+
+.dispatcher-cabinet-page__vehicle-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 16px;
+}
+
 @media (max-width: 960px) {
   .dispatcher-cabinet-page__layout {
     grid-template-columns: 1fr;

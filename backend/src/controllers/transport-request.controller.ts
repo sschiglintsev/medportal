@@ -7,8 +7,8 @@ let tableReady = false;
 
 async function ensureTable(): Promise<void> {
   if (tableReady) return;
-  await withDbClient((client) =>
-    client.query(`
+  await withDbClient(async (client) => {
+    await client.query(`
       CREATE TABLE IF NOT EXISTS transport_requests (
         id               SERIAL PRIMARY KEY,
         department       VARCHAR(255) NOT NULL,
@@ -24,8 +24,18 @@ async function ensureTable(): Promise<void> {
         comment          TEXT,
         created_at       TIMESTAMP    NOT NULL DEFAULT NOW()
       )
-    `),
-  );
+    `);
+    await client.query(`
+      ALTER TABLE transport_requests
+      ADD COLUMN IF NOT EXISTS vehicle_id INTEGER REFERENCES vehicles(id) ON DELETE SET NULL
+    `);
+    await client.query(`
+      ALTER TABLE transport_requests ADD COLUMN IF NOT EXISTS position VARCHAR(255)
+    `);
+    await client.query(`
+      ALTER TABLE transport_requests ADD COLUMN IF NOT EXISTS phone VARCHAR(20)
+    `);
+  });
   tableReady = true;
 }
 
@@ -35,6 +45,8 @@ type TransportRequestStatus = (typeof ALLOWED_STATUSES)[number];
 type CreateTransportRequestBody = {
   department: string;
   initiator: string;
+  position?: string;
+  phone?: string;
   submission_date: string;
   submission_time: string;
   route_from: string;
@@ -51,6 +63,8 @@ export async function createTransportRequest(req: Request, res: Response, next: 
 
     const department     = body.department?.trim();
     const initiator      = body.initiator?.trim();
+    const position       = body.position?.trim() || null;
+    const phone          = body.phone?.trim() || null;
     const submissionDate = body.submission_date?.trim();
     const submissionTime = body.submission_time?.trim();
     const routeFrom      = body.route_from?.trim();
@@ -75,11 +89,11 @@ export async function createTransportRequest(req: Request, res: Response, next: 
     const result = await withDbClient((client) =>
       client.query(
         `INSERT INTO transport_requests
-           (department, initiator, submission_date, submission_time,
+           (department, initiator, position, phone, submission_date, submission_time,
             route_from, route_to, purpose, passenger_count, special_notes)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
          RETURNING id, status, created_at`,
-        [department, initiator, submissionDate, submissionTime,
+        [department, initiator, position, phone, submissionDate, submissionTime,
          routeFrom, routeTo, purpose, Number(passengerCount), specialNotes],
       ),
     );
@@ -108,11 +122,15 @@ export async function getTransportRequests(_req: Request, res: Response, next: N
     await ensureTable();
     const result = await withDbClient((client) =>
       client.query(
-        `SELECT id, department, initiator, submission_date, submission_time,
-                route_from, route_to, purpose, passenger_count, special_notes,
-                status, comment, created_at
-         FROM transport_requests
-         ORDER BY created_at DESC`,
+        `SELECT tr.id, tr.department, tr.initiator, tr.position, tr.phone,
+                tr.submission_date, tr.submission_time,
+                tr.route_from, tr.route_to, tr.purpose, tr.passenger_count, tr.special_notes,
+                tr.status, tr.comment, tr.created_at, tr.vehicle_id,
+                v.make AS vehicle_make, v.model AS vehicle_model,
+                v.license_plate AS vehicle_license_plate, v.driver AS vehicle_driver
+         FROM transport_requests tr
+         LEFT JOIN vehicles v ON v.id = tr.vehicle_id
+         ORDER BY tr.created_at DESC`,
       ),
     );
 
@@ -133,10 +151,15 @@ export async function getTransportRequestByIdPublic(req: Request, res: Response,
 
     const result = await withDbClient((client) =>
       client.query(
-        `SELECT id, department, initiator, submission_date, submission_time,
-                route_from, route_to, purpose, passenger_count, special_notes,
-                status, comment, created_at
-         FROM transport_requests WHERE id = $1`,
+        `SELECT tr.id, tr.department, tr.initiator, tr.position, tr.phone,
+                tr.submission_date, tr.submission_time,
+                tr.route_from, tr.route_to, tr.purpose, tr.passenger_count, tr.special_notes,
+                tr.status, tr.comment, tr.created_at, tr.vehicle_id,
+                v.make AS vehicle_make, v.model AS vehicle_model,
+                v.license_plate AS vehicle_license_plate, v.driver AS vehicle_driver
+         FROM transport_requests tr
+         LEFT JOIN vehicles v ON v.id = tr.vehicle_id
+         WHERE tr.id = $1`,
         [id],
       ),
     );
@@ -167,6 +190,33 @@ export async function updateTransportRequestStatus(req: Request, res: Response, 
       client.query(
         `UPDATE transport_requests SET status = $1 WHERE id = $2 RETURNING id, status`,
         [status, id],
+      ),
+    );
+
+    if (result.rowCount === 0) {
+      res.status(404).json({ message: 'Заявка не найдена' });
+      return;
+    }
+
+    res.status(200).json(result.rows[0]);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateTransportRequestVehicle(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    await ensureTable();
+    const id = Number(req.params.id);
+    const { vehicle_id } = req.body as { vehicle_id: number | null };
+
+    const vehicleId = vehicle_id === null || vehicle_id === undefined ? null : Number(vehicle_id);
+
+    const result = await withDbClient((client) =>
+      client.query(
+        `UPDATE transport_requests SET vehicle_id = $1 WHERE id = $2
+         RETURNING id, vehicle_id`,
+        [vehicleId, id],
       ),
     );
 

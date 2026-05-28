@@ -4,6 +4,8 @@ import type { TransportRequest } from '../types/common';
 export type CreateTransportRequestPayload = {
   department: string;
   initiator: string;
+  position?: string;
+  phone?: string;
   submission_date: string;
   submission_time: string;
   route_from: string;
@@ -52,6 +54,18 @@ export async function updateTransportRequestStatus(
   await http.patch(
     `/transport-requests/${id}/status`,
     { status },
+    { headers: { Authorization: `Bearer ${auth.token}` } },
+  );
+}
+
+export async function assignVehicleToRequest(
+  id: number,
+  vehicleId: number | null,
+  auth: AuthHeader,
+): Promise<void> {
+  await http.patch(
+    `/transport-requests/${id}/vehicle`,
+    { vehicle_id: vehicleId },
     { headers: { Authorization: `Bearer ${auth.token}` } },
   );
 }

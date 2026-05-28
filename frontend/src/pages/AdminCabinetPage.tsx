@@ -23,6 +23,7 @@ import { AdminAhchRequestsPage } from './AdminAhchRequestsPage';
 import { AdminItRequestsPage } from './AdminItRequestsPage';
 import { AdminMetrologistRequestsPage } from './AdminMetrologistRequestsPage';
 import { AdminTransportRequestsPage } from './AdminTransportRequestsPage';
+import { AdminVehiclesPage } from './AdminVehiclesPage';
 import { AdminOrganizationPage } from './AdminOrganizationPage';
 import { AdminUsersPage } from './AdminUsersPage';
 import './AdminCabinetPage.scss';
@@ -36,6 +37,7 @@ type Section =
   | 'metrologist-requests'
   | 'ahch-requests'
   | 'transport-requests'
+  | 'vehicles'
   | 'incidents'
   | 'users'
   | 'organization';
@@ -49,6 +51,7 @@ const SECTION_TITLES: Record<Section, string> = {
   'metrologist-requests': 'Заявки метрологу',
   'ahch-requests': 'Заявки в АХЧ',
   'transport-requests': 'Транспортные заявки',
+  vehicles: 'Автомобили',
   incidents: 'Нежелательные события',
   users: 'Пользователи',
   organization: 'Профиль организации',
@@ -67,6 +70,8 @@ export function AdminCabinetPage() {
         return <AdminAhchRequestsPage />;
       case 'transport-requests':
         return <AdminTransportRequestsPage />;
+      case 'vehicles':
+        return <AdminVehiclesPage />;
       case 'documents':
         return <AdminDocumentsPage />;
       case 'announcements':
@@ -101,6 +106,7 @@ export function AdminCabinetPage() {
               { key: 'metrologist-requests', icon: <ExperimentOutlined />, label: 'Заявки метрологу' },
               { key: 'ahch-requests', icon: <HomeOutlined />, label: 'Заявки в АХЧ' },
               { key: 'transport-requests', icon: <CarOutlined />, label: 'Транспортные заявки' },
+              { key: 'vehicles', icon: <CarOutlined />, label: 'Автомобили' },
               { key: 'incidents', icon: <UnorderedListOutlined />, label: 'Нежелательные события' },
               { type: 'divider' },
               { key: 'users', icon: <TeamOutlined />, label: 'Пользователи' },

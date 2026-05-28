@@ -1,7 +1,7 @@
 import { Button, List, Modal, Select, Space, Tag, Typography, message } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { formatDateTime } from '../Core/date.utils';
+import { formatDate, formatDateTime, formatTime } from '../Core/date.utils';
 import { fetchTransportRequests } from '../Core/services/transport-request.service';
 import { useAppStore } from '../Core/store/app.store';
 import type { TransportRequest } from '../Core/types/common';
@@ -112,7 +112,7 @@ export function AdminTransportRequestsPage() {
               <div className="admin-transport-requests-page__meta">
                 <span>{item.department}</span>
                 <span>{item.route_from} → {item.route_to}</span>
-                <span>{item.submission_date} {item.submission_time}</span>
+                <span>{formatDate(item.submission_date)} {formatTime(item.submission_time)}</span>
                 <span>{formatDateTime(item.created_at)}</span>
               </div>
               <Typography.Paragraph ellipsis={{ rows: 1 }} className="admin-transport-requests-page__text">
@@ -135,13 +135,21 @@ export function AdminTransportRequestsPage() {
         {selectedItem && (
           <div className="admin-transport-requests-page__details">
             <p><strong>Отделение:</strong> {selectedItem.department}</p>
-            <p><strong>Инициатор:</strong> {selectedItem.initiator}</p>
-            <p><strong>Дата/время подачи:</strong> {selectedItem.submission_date} {selectedItem.submission_time}</p>
+            <p><strong>Инициатор:</strong> {selectedItem.initiator}{selectedItem.position ? `, ${selectedItem.position}` : ''}</p>
+            {selectedItem.phone && <p><strong>Телефон:</strong> {selectedItem.phone}</p>}
+            <p><strong>Дата/время подачи:</strong> {formatDate(selectedItem.submission_date)} {formatTime(selectedItem.submission_time)}</p>
             <p><strong>Маршрут:</strong> {selectedItem.route_from} → {selectedItem.route_to}</p>
             <p><strong>Цель поездки:</strong> {selectedItem.purpose}</p>
             <p><strong>Пассажиров:</strong> {selectedItem.passenger_count}</p>
             {selectedItem.special_notes && (
               <p><strong>Особые отметки:</strong> {selectedItem.special_notes}</p>
+            )}
+            {selectedItem.vehicle_make && (
+              <p>
+                <strong>Автомобиль:</strong>{' '}
+                {selectedItem.vehicle_make} {selectedItem.vehicle_model} · {selectedItem.vehicle_license_plate}
+                {selectedItem.vehicle_driver && ` (${selectedItem.vehicle_driver})`}
+              </p>
             )}
             <p><strong>Статус:</strong> <StatusTag status={selectedItem.status} /></p>
             <p><strong>Создано:</strong> {formatDateTime(selectedItem.created_at)}</p>

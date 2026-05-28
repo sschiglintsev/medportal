@@ -4,6 +4,7 @@ import type { MenuProps } from 'antd';
 import { useEffect, useState } from 'react';
 
 import { userHasCabinetAccess } from '../../Core/cabinetAccess';
+import { formatDate, formatTime } from '../../Core/date.utils';
 import { fetchAhchRequestPublic } from '../../Core/services/ahch-request.service';
 import type { PublicAhchRequest } from '../../Core/services/ahch-request.service';
 import { fetchRegistrationRoles, login, register } from '../../Core/services/auth.service';
@@ -627,9 +628,15 @@ export function Header() {
               </Tag>
             </Descriptions.Item>
             <Descriptions.Item label="Отделение">{transportRequest.department}</Descriptions.Item>
-            <Descriptions.Item label="Инициатор">{transportRequest.initiator}</Descriptions.Item>
+            <Descriptions.Item label="Инициатор">
+              {transportRequest.initiator}
+              {transportRequest.position ? `, ${transportRequest.position}` : ''}
+            </Descriptions.Item>
+            {transportRequest.phone && (
+              <Descriptions.Item label="Телефон">{transportRequest.phone}</Descriptions.Item>
+            )}
             <Descriptions.Item label="Дата/время подачи">
-              {transportRequest.submission_date} {transportRequest.submission_time}
+              {formatDate(transportRequest.submission_date)} {formatTime(transportRequest.submission_time)}
             </Descriptions.Item>
             <Descriptions.Item label="Маршрут">
               {transportRequest.route_from} → {transportRequest.route_to}
@@ -638,6 +645,12 @@ export function Header() {
             <Descriptions.Item label="Пассажиров">{transportRequest.passenger_count}</Descriptions.Item>
             {transportRequest.special_notes && (
               <Descriptions.Item label="Особые отметки">{transportRequest.special_notes}</Descriptions.Item>
+            )}
+            {transportRequest.vehicle_make && (
+              <Descriptions.Item label="Автомобиль">
+                {transportRequest.vehicle_make} {transportRequest.vehicle_model} · {transportRequest.vehicle_license_plate}
+                {transportRequest.vehicle_driver && ` (${transportRequest.vehicle_driver})`}
+              </Descriptions.Item>
             )}
             {transportRequest.comment && (
               <Descriptions.Item label="Комментарий диспетчера">{transportRequest.comment}</Descriptions.Item>

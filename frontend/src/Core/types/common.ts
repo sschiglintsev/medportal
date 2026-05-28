@@ -126,10 +126,21 @@ export type UserListItem = {
   created_at: string;
 };
 
+export type Vehicle = {
+  id: number;
+  make: string;
+  model: string;
+  license_plate: string;
+  driver: string | null;
+  created_at: string;
+};
+
 export type TransportRequest = {
   id: number;
   department: string;
   initiator: string;
+  position: string | null;
+  phone: string | null;
   submission_date: string;
   submission_time: string;
   route_from: string;
@@ -140,6 +151,11 @@ export type TransportRequest = {
   status: string;
   comment: string | null;
   created_at: string;
+  vehicle_id: number | null;
+  vehicle_make: string | null;
+  vehicle_model: string | null;
+  vehicle_license_plate: string | null;
+  vehicle_driver: string | null;
 };
 
 export type OrganizationProfile = {

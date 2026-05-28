@@ -6,6 +6,7 @@ import {
   getTransportRequests,
   updateTransportRequestComment,
   updateTransportRequestStatus,
+  updateTransportRequestVehicle,
 } from '../controllers/transport-request.controller';
 import { requireAuth, requireRoles } from '../middlewares/auth.middleware';
 
@@ -30,6 +31,12 @@ transportRequestRouter.patch(
   requireAuth,
   requireRoles(['dispatcher', 'administrator']),
   updateTransportRequestComment,
+);
+transportRequestRouter.patch(
+  '/transport-requests/:id/vehicle',
+  requireAuth,
+  requireRoles(['dispatcher']),
+  updateTransportRequestVehicle,
 );
 
 export { transportRequestRouter };

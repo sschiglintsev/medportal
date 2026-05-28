@@ -1,7 +1,7 @@
 import { Alert, Button, DatePicker, Form, InputNumber, Modal, Select, TimePicker, Typography, message } from 'antd';
 import Input from 'antd/es/input/Input';
 import type { Dayjs } from 'dayjs';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import { fetchDepartments } from '../../Core/services/incident.service';
 import { createTransportRequest } from '../../Core/services/transport-request.service';
@@ -13,9 +13,24 @@ type TransportRequestModalProps = {
   onClose: () => void;
 };
 
+const formatPhoneMask = (value: string): string => {
+  const digits = value.replace(/\D/g, '');
+  const digitsWithoutCountryCode = digits.startsWith('7') ? digits.slice(1) : digits;
+  const phoneDigits = digitsWithoutCountryCode.slice(0, 10);
+  if (!phoneDigits) return '+7';
+  let formatted = `+7(${phoneDigits.slice(0, 3)}`;
+  if (phoneDigits.length >= 3) formatted += ')';
+  if (phoneDigits.length > 3) formatted += phoneDigits.slice(3, 6);
+  if (phoneDigits.length > 6) formatted += `-${phoneDigits.slice(6, 8)}`;
+  if (phoneDigits.length > 8) formatted += `-${phoneDigits.slice(8, 10)}`;
+  return formatted;
+};
+
 type TransportRequestFormValues = {
   department: string;
   initiator: string;
+  position?: string;
+  phone?: string;
   submission_date: Dayjs;
   submission_time: Dayjs;
   route_from: string;
@@ -63,6 +78,8 @@ export function TransportRequestModal({ open, onClose }: TransportRequestModalPr
         ...values,
         submission_date: values.submission_date.format('YYYY-MM-DD'),
         submission_time: values.submission_time.format('HH:mm'),
+        position: values.position || undefined,
+        phone: values.phone || undefined,
         special_notes: values.special_notes || undefined,
       });
       setCreatedRequestId(created.id);
@@ -105,21 +122,39 @@ export function TransportRequestModal({ open, onClose }: TransportRequestModalPr
         </div>
       ) : (
         <Form form={form} layout="vertical" onFinish={onFinish} className="transport-request-modal">
-          <Form.Item
-            name="department"
-            label="Отделение"
-            rules={[{ required: true, message: 'Выберите отделение' }]}
-          >
-            <Select options={departments.map((d) => ({ value: d.name, label: d.name }))} />
-          </Form.Item>
+          <div className="transport-request-modal__row">
+            <Form.Item
+              name="initiator"
+              label="Инициатор (ФИО)"
+              rules={[{ required: true, message: 'Введите ФИО' }]}
+            >
+              <Input />
+            </Form.Item>
 
-          <Form.Item
-            name="initiator"
-            label="Инициатор (ФИО)"
-            rules={[{ required: true, message: 'Введите ФИО инициатора' }]}
-          >
-            <Input />
-          </Form.Item>
+            <Form.Item
+              name="department"
+              label="Отделение"
+              rules={[{ required: true, message: 'Выберите отделение' }]}
+            >
+              <Select options={departments.map((d) => ({ value: d.name, label: d.name }))} />
+            </Form.Item>
+          </div>
+
+          <div className="transport-request-modal__row">
+            <Form.Item name="position" label="Должность">
+              <Input />
+            </Form.Item>
+
+            <Form.Item
+              name="phone"
+              label="Телефон"
+              getValueFromEvent={(e: React.ChangeEvent<HTMLInputElement>) =>
+                formatPhoneMask(e.target.value)
+              }
+            >
+              <Input placeholder="+7(___)-__-__" />
+            </Form.Item>
+          </div>
 
           <div className="transport-request-modal__row">
             <Form.Item
