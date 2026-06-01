@@ -78,8 +78,8 @@ export function TransportRequestModal({ open, onClose }: TransportRequestModalPr
         ...values,
         submission_date: values.submission_date.format('YYYY-MM-DD'),
         submission_time: values.submission_time.format('HH:mm'),
-        position: values.position || undefined,
-        phone: values.phone || undefined,
+        position: values.position,
+        phone: values.phone,
         special_notes: values.special_notes || undefined,
       });
       setCreatedRequestId(created.id);
@@ -141,13 +141,18 @@ export function TransportRequestModal({ open, onClose }: TransportRequestModalPr
           </div>
 
           <div className="transport-request-modal__row">
-            <Form.Item name="position" label="Должность">
+            <Form.Item
+              name="position"
+              label="Должность"
+              rules={[{ required: true, message: 'Введите должность' }]}
+            >
               <Input />
             </Form.Item>
 
             <Form.Item
               name="phone"
               label="Телефон"
+              rules={[{ required: true, message: 'Введите телефон' }]}
               getValueFromEvent={(e: React.ChangeEvent<HTMLInputElement>) =>
                 formatPhoneMask(e.target.value)
               }
@@ -177,16 +182,16 @@ export function TransportRequestModal({ open, onClose }: TransportRequestModalPr
           <div className="transport-request-modal__row">
             <Form.Item
               name="route_from"
-              label="Откуда"
-              rules={[{ required: true, message: 'Укажите точку отправления' }]}
+              label="Откуда забирать"
+              rules={[{ required: true, message: 'Укажите место отправления' }]}
             >
               <Input placeholder="Адрес или место отправления" />
             </Form.Item>
 
             <Form.Item
               name="route_to"
-              label="Куда"
-              rules={[{ required: true, message: 'Укажите точку назначения' }]}
+              label="Куда ехать"
+              rules={[{ required: true, message: 'Укажите место назначения' }]}
             >
               <Input placeholder="Адрес или место назначения" />
             </Form.Item>

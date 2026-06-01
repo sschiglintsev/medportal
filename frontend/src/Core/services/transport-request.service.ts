@@ -4,8 +4,8 @@ import type { TransportRequest } from '../types/common';
 export type CreateTransportRequestPayload = {
   department: string;
   initiator: string;
-  position?: string;
-  phone?: string;
+  position: string;
+  phone: string;
   submission_date: string;
   submission_time: string;
   route_from: string;
