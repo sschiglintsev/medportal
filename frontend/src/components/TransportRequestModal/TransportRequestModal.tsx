@@ -29,8 +29,8 @@ const formatPhoneMask = (value: string): string => {
 type TransportRequestFormValues = {
   department: string;
   initiator: string;
-  position?: string;
-  phone?: string;
+  position: string;
+  phone: string;
   submission_date: Dayjs;
   submission_time: Dayjs;
   route_from: string;
