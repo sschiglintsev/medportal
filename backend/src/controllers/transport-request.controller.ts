@@ -27,7 +27,7 @@ async function ensureTable(): Promise<void> {
     `);
     await client.query(`
       ALTER TABLE transport_requests
-      ADD COLUMN IF NOT EXISTS vehicle_id INTEGER REFERENCES vehicles(id) ON DELETE SET NULL
+      ADD COLUMN IF NOT EXISTS vehicle_id INTEGER
     `);
     await client.query(`
       ALTER TABLE transport_requests ADD COLUMN IF NOT EXISTS position VARCHAR(255)
