@@ -1,4 +1,4 @@
-.admin-incident-types-page {
+.admin-incident-view-types-page {
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -8,14 +8,15 @@
   border-radius: 12px;
 }
 
-.admin-incident-types-page__toolbar {
+.admin-incident-view-types-page__toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 12px;
 }
 
-.admin-incident-types-page__modal-footer {
+.admin-incident-view-types-page__modal-footer {
   display: flex;
   justify-content: flex-end;
   gap: 8px;

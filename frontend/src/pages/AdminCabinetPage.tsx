@@ -19,6 +19,7 @@ import { AdminAnnouncementsPage } from './AdminAnnouncementsPage';
 import { AdminDepartmentsPage } from './AdminDepartmentsPage';
 import { AdminDocumentsPage } from './AdminDocumentsPage';
 import { AdminIncidentTypesPage } from './AdminIncidentTypesPage';
+import { AdminIncidentViewTypesPage } from './AdminIncidentViewTypesPage';
 import { AdminAhchRequestsPage } from './AdminAhchRequestsPage';
 import { AdminItRequestsPage } from './AdminItRequestsPage';
 import { AdminMetrologistRequestsPage } from './AdminMetrologistRequestsPage';
@@ -31,6 +32,7 @@ import './AdminCabinetPage.scss';
 type Section =
   | 'departments'
   | 'incident-types'
+  | 'incident-view-types'
   | 'announcements'
   | 'documents'
   | 'it-requests'
@@ -45,6 +47,7 @@ type Section =
 const SECTION_TITLES: Record<Section, string> = {
   departments: 'Отделения',
   'incident-types': 'Типы инцидентов',
+  'incident-view-types': 'Вид нежелательных событий',
   announcements: 'Объявления',
   documents: 'Документы',
   'it-requests': 'Заявки в ИТ',
@@ -78,6 +81,8 @@ export function AdminCabinetPage() {
         return <AdminAnnouncementsPage />;
       case 'incident-types':
         return <AdminIncidentTypesPage />;
+      case 'incident-view-types':
+        return <AdminIncidentViewTypesPage />;
       case 'incidents':
         return <IncidentsRegistryPanel hideTitle />;
       case 'users':
@@ -100,6 +105,7 @@ export function AdminCabinetPage() {
             items={[
               { key: 'departments', icon: <ApartmentOutlined />, label: 'Отделения' },
               { key: 'incident-types', icon: <TagsOutlined />, label: 'Типы инцидентов' },
+              { key: 'incident-view-types', icon: <UnorderedListOutlined />, label: 'Вид нежелательных событий' },
               { key: 'announcements', icon: <NotificationOutlined />, label: 'Объявления' },
               { key: 'documents', icon: <FileTextOutlined />, label: 'Документы' },
               { key: 'it-requests', icon: <ToolOutlined />, label: 'Заявки в ИТ' },

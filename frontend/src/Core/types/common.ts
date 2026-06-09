@@ -1,6 +1,7 @@
 export type Department = {
   id: number;
   name: string;
+  care_type: string | null;
   created_at: string;
 };
 
@@ -8,6 +9,14 @@ export type IncidentType = {
   id: number;
   name: string;
   created_at: string;
+};
+
+export type IncidentViewType = {
+  id: number;
+  name: string;
+  care_type: string;
+  created_at: string;
+  incident_types: { id: number; name: string }[];
 };
 
 export type Announcement = {
@@ -79,9 +88,13 @@ export type Incident = {
   legal_presence: string;
   department_id: number;
   department_name: string | null;
+  incident_view_type_id: number | null;
+  incident_view_type_name: string | null;
+  care_type: string | null;
   incident_type_id: number;
   incident_type_name: string | null;
   consequences: string;
+  severity_level: string | null;
   status: string;
   created_at: string;
 };

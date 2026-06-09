@@ -1,4 +1,4 @@
-import { Button, DatePicker, Descriptions, Modal, Select, Space, Table, Typography, message } from 'antd';
+import { Button, DatePicker, Descriptions, Modal, Select, Space, Table, Tag, Typography, message } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
 
@@ -8,21 +8,44 @@ import { useAppStore } from '../../Core/store/app.store';
 import type { Incident } from '../../Core/types/common';
 import './IncidentsRegistryPanel.scss';
 
+const SEVERITY_LABELS: Record<string, string> = {
+  light: 'Лёгкий',
+  medium: 'Средний',
+  severe: 'Тяжёлый',
+};
+
+const SEVERITY_COLORS: Record<string, string> = {
+  light: 'green',
+  medium: 'orange',
+  severe: 'red',
+};
+
+const LEGAL_PRESENCE_LABELS: Record<string, string> = {
+  YES: 'Да',
+  NO: 'Нет',
+  UNKNOWN: 'Неизвестно',
+};
+
+function SeverityTag({ value }: { value: string | null }) {
+  if (!value) return <span>—</span>;
+  return <Tag color={SEVERITY_COLORS[value] ?? 'default'}>{SEVERITY_LABELS[value] ?? value}</Tag>;
+}
+
 export function IncidentsRegistryPanel({ hideTitle }: { hideTitle?: boolean } = {}) {
   const [items, setItems] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [selectedCareType, setSelectedCareType] = useState<string | null>(null);
   const [selectedDepartment, setSelectedDepartment] = useState<string | null>(null);
+  const [selectedViewType, setSelectedViewType] = useState<string | null>(null);
   const [selectedIncidentType, setSelectedIncidentType] = useState<string | null>(null);
+  const [selectedSeverity, setSelectedSeverity] = useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
   const token = useAppStore((state) => state.token);
 
   const loadIncidents = useCallback(async () => {
-    if (!token) {
-      return;
-    }
-
+    if (!token) return;
     setLoading(true);
     try {
       const data = await fetchIncidents({ token });
@@ -40,55 +63,55 @@ export function IncidentsRegistryPanel({ hideTitle }: { hideTitle?: boolean } = 
 
   const departmentOptions = useMemo(
     () =>
-      Array.from(new Set(items.map((item) => item.department_name).filter(Boolean))).map((name) => ({
-        value: name as string,
-        label: name as string,
+      Array.from(new Set(items.map((i) => i.department_name).filter(Boolean))).map((n) => ({
+        value: n as string, label: n as string,
+      })),
+    [items],
+  );
+
+  const viewTypeOptions = useMemo(
+    () =>
+      Array.from(new Set(items.map((i) => i.incident_view_type_name).filter(Boolean))).map((n) => ({
+        value: n as string, label: n as string,
       })),
     [items],
   );
 
   const incidentTypeOptions = useMemo(
     () =>
-      Array.from(new Set(items.map((item) => item.incident_type_name).filter(Boolean))).map((name) => ({
-        value: name as string,
-        label: name as string,
+      Array.from(new Set(items.map((i) => i.incident_type_name).filter(Boolean))).map((n) => ({
+        value: n as string, label: n as string,
       })),
     [items],
   );
 
   const statusOptions = useMemo(
-    () =>
-      Array.from(new Set(items.map((item) => item.status))).map((status) => ({
-        value: status,
-        label: status,
-      })),
+    () => Array.from(new Set(items.map((i) => i.status))).map((s) => ({ value: s, label: s })),
     [items],
   );
 
   const filteredItems = useMemo(
     () =>
       items.filter((item) => {
-        if (selectedDate && item.incident_date !== selectedDate) {
-          return false;
-        }
-        if (selectedDepartment && item.department_name !== selectedDepartment) {
-          return false;
-        }
-        if (selectedIncidentType && item.incident_type_name !== selectedIncidentType) {
-          return false;
-        }
-        if (selectedStatus && item.status !== selectedStatus) {
-          return false;
-        }
+        if (selectedDate && item.incident_date !== selectedDate) return false;
+        if (selectedCareType && item.care_type !== selectedCareType) return false;
+        if (selectedDepartment && item.department_name !== selectedDepartment) return false;
+        if (selectedViewType && item.incident_view_type_name !== selectedViewType) return false;
+        if (selectedIncidentType && item.incident_type_name !== selectedIncidentType) return false;
+        if (selectedSeverity && item.severity_level !== selectedSeverity) return false;
+        if (selectedStatus && item.status !== selectedStatus) return false;
         return true;
       }),
-    [items, selectedDate, selectedDepartment, selectedIncidentType, selectedStatus],
+    [items, selectedDate, selectedCareType, selectedDepartment, selectedViewType, selectedIncidentType, selectedSeverity, selectedStatus],
   );
 
   const resetFilters = () => {
     setSelectedDate(null);
+    setSelectedCareType(null);
     setSelectedDepartment(null);
+    setSelectedViewType(null);
     setSelectedIncidentType(null);
+    setSelectedSeverity(null);
     setSelectedStatus(null);
   };
 
@@ -102,16 +125,17 @@ export function IncidentsRegistryPanel({ hideTitle }: { hideTitle?: boolean } = 
       ID: item.id,
       Дата: formatDate(item.incident_date),
       Время: formatTime(item.incident_time),
-      Место: item.place,
+      'Вид медицинской помощи': item.care_type ?? '',
+      Отделение: item.department_name ?? '',
+      'Вид нежелательного события': item.incident_view_type_name ?? '',
+      'Тип инцидента': item.incident_type_name ?? '',
+      'Уровень тяжести': SEVERITY_LABELS[item.severity_level ?? ''] ?? '',
       Пациент: item.patient_fio,
       'Дата рождения пациента': formatDate(item.patient_birth_date),
+      Обстоятельства: item.circumstances,
+      'Присутствие законного представителя': LEGAL_PRESENCE_LABELS[item.legal_presence] ?? item.legal_presence,
       Сотрудник: item.employee_fio,
       Должность: item.employee_position,
-      'Юридическое присутствие': item.legal_presence,
-      Отделение: item.department_name ?? '',
-      'Тип инцидента': item.incident_type_name ?? '',
-      Обстоятельства: item.circumstances,
-      Последствия: item.consequences,
       Статус: item.status,
       Создано: formatDateTime(item.created_at),
     }));
@@ -121,12 +145,7 @@ export function IncidentsRegistryPanel({ hideTitle }: { hideTitle?: boolean } = 
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Инциденты');
 
     const now = new Date();
-    const fileSuffix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(
-      now.getDate(),
-    ).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(
-      2,
-      '0',
-    )}`;
+    const fileSuffix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}`;
     XLSX.writeFile(workbook, `incidents_${fileSuffix}.xlsx`);
   };
 
@@ -140,38 +159,67 @@ export function IncidentsRegistryPanel({ hideTitle }: { hideTitle?: boolean } = 
 
       <Space size={10} wrap className="incidents-registry-panel__filters">
         <DatePicker
-          placeholder="Дата инцидента"
+          placeholder="Дата события"
           format="DD.MM.YYYY"
           allowClear
-          onChange={(date) => {
-            setSelectedDate(date ? date.format('YYYY-MM-DD') : null);
-          }}
+          onChange={(date) => setSelectedDate(date ? date.format('YYYY-MM-DD') : null)}
+        />
+        <Select
+          placeholder="Вид мед. помощи"
+          allowClear
+          value={selectedCareType ?? undefined}
+          onChange={(v) => setSelectedCareType(v ?? null)}
+          style={{ minWidth: 170 }}
+          options={[
+            { value: 'Стационар', label: 'Стационар' },
+            { value: 'Поликлиника', label: 'Поликлиника' },
+          ]}
         />
         <Select
           placeholder="Отделение"
           allowClear
           options={departmentOptions}
           value={selectedDepartment ?? undefined}
-          onChange={(value) => setSelectedDepartment(value ?? null)}
-          style={{ minWidth: 200 }}
+          onChange={(v) => setSelectedDepartment(v ?? null)}
+          style={{ minWidth: 180 }}
+        />
+        <Select
+          placeholder="Вид нежелательного события"
+          allowClear
+          options={viewTypeOptions}
+          value={selectedViewType ?? undefined}
+          onChange={(v) => setSelectedViewType(v ?? null)}
+          style={{ minWidth: 220 }}
         />
         <Select
           placeholder="Тип инцидента"
           allowClear
           options={incidentTypeOptions}
           value={selectedIncidentType ?? undefined}
-          onChange={(value) => setSelectedIncidentType(value ?? null)}
-          style={{ minWidth: 200 }}
+          onChange={(v) => setSelectedIncidentType(v ?? null)}
+          style={{ minWidth: 180 }}
+        />
+        <Select
+          placeholder="Уровень тяжести"
+          allowClear
+          value={selectedSeverity ?? undefined}
+          onChange={(v) => setSelectedSeverity(v ?? null)}
+          style={{ minWidth: 160 }}
+          options={[
+            { value: 'light', label: 'Лёгкий' },
+            { value: 'medium', label: 'Средний' },
+            { value: 'severe', label: 'Тяжёлый' },
+          ]}
         />
         <Select
           placeholder="Статус"
           allowClear
           options={statusOptions}
           value={selectedStatus ?? undefined}
-          onChange={(value) => setSelectedStatus(value ?? null)}
-          style={{ minWidth: 160 }}
+          onChange={(v) => setSelectedStatus(v ?? null)}
+          style={{ minWidth: 140 }}
         />
-        <Button onClick={resetFilters}>Сбросить фильтры</Button>
+        <Button onClick={resetFilters}>Сбросить</Button>
         <Button type="primary" onClick={() => void loadIncidents()} loading={loading}>
           Обновить
         </Button>
@@ -182,72 +230,107 @@ export function IncidentsRegistryPanel({ hideTitle }: { hideTitle?: boolean } = 
         rowKey="id"
         loading={loading}
         dataSource={filteredItems}
-        scroll={{ x: 760 }}
+        scroll={{ x: 900 }}
         onRow={(record) => ({
           onClick: () => setSelectedIncident(record),
           className: 'incidents-registry-panel__clickable-row',
         })}
         columns={[
-          { title: 'ID', dataIndex: 'id', key: 'id', width: '10%' },
+          { title: 'ID', dataIndex: 'id', key: 'id', width: 60 },
           {
             title: 'Дата',
             dataIndex: 'incident_date',
             key: 'incident_date',
-            width: '18%',
-            render: (value: string) => formatDate(value),
+            width: 110,
+            render: (v: string) => formatDate(v),
           },
           {
-            title: 'Время',
-            dataIndex: 'incident_time',
-            key: 'incident_time',
-            width: '16%',
-            render: (value: string) => formatTime(value),
+            title: 'Вид мед. помощи',
+            dataIndex: 'care_type',
+            key: 'care_type',
+            width: 130,
+            render: (v: string | null) => v ?? '—',
           },
-          { title: 'Место', dataIndex: 'place', key: 'place', width: '32%' },
-          { title: 'Отделение', dataIndex: 'department_name', key: 'department_name', width: '24%' },
+          {
+            title: 'Отделение',
+            dataIndex: 'department_name',
+            key: 'department_name',
+            width: 160,
+            render: (v: string | null) => v ?? '—',
+          },
+          {
+            title: 'Вид нежелательного события',
+            dataIndex: 'incident_view_type_name',
+            key: 'incident_view_type_name',
+            width: 200,
+            render: (v: string | null) => v ?? '—',
+          },
+          {
+            title: 'Тип инцидента',
+            dataIndex: 'incident_type_name',
+            key: 'incident_type_name',
+            width: 160,
+            render: (v: string | null) => v ?? '—',
+          },
+          {
+            title: 'Уровень тяжести',
+            dataIndex: 'severity_level',
+            key: 'severity_level',
+            width: 140,
+            render: (v: string | null) => <SeverityTag value={v} />,
+          },
         ]}
       />
 
       <Modal
-        title={selectedIncident ? `Инцидент #${selectedIncident.id}` : 'Инцидент'}
+        title={selectedIncident ? `Нежелательное событие #${selectedIncident.id}` : ''}
         open={Boolean(selectedIncident)}
         onCancel={() => setSelectedIncident(null)}
         footer={null}
-        width={900}
+        width={760}
         destroyOnClose
       >
-        {selectedIncident ? (
-          <Descriptions bordered column={1} size="small">
+        {selectedIncident && (
+          <Descriptions bordered column={1} size="small" className="incidents-registry-panel__desc">
             <Descriptions.Item label="Дата">{formatDate(selectedIncident.incident_date)}</Descriptions.Item>
             <Descriptions.Item label="Время">{formatTime(selectedIncident.incident_time)}</Descriptions.Item>
-            <Descriptions.Item label="Место">{selectedIncident.place}</Descriptions.Item>
-            <Descriptions.Item label="Отделение">
-              {selectedIncident.department_name ?? '-'}
-            </Descriptions.Item>
-            <Descriptions.Item label="Тип инцидента">
-              {selectedIncident.incident_type_name ?? '-'}
-            </Descriptions.Item>
-            <Descriptions.Item label="Статус">{selectedIncident.status}</Descriptions.Item>
+            {selectedIncident.care_type
+              ? <Descriptions.Item label="Вид медицинской помощи">{selectedIncident.care_type}</Descriptions.Item>
+              : null}
+            {selectedIncident.department_name
+              ? <Descriptions.Item label="Отделение">{selectedIncident.department_name}</Descriptions.Item>
+              : null}
+            {selectedIncident.incident_view_type_name
+              ? <Descriptions.Item label="Вид нежелательного события">{selectedIncident.incident_view_type_name}</Descriptions.Item>
+              : null}
+            {selectedIncident.incident_type_name
+              ? <Descriptions.Item label="Тип инцидента">{selectedIncident.incident_type_name}</Descriptions.Item>
+              : null}
+            {selectedIncident.severity_level
+              ? <Descriptions.Item label="Уровень тяжести"><SeverityTag value={selectedIncident.severity_level} /></Descriptions.Item>
+              : null}
             <Descriptions.Item label="Пациент">{selectedIncident.patient_fio}</Descriptions.Item>
             <Descriptions.Item label="Дата рождения пациента">
               {formatDate(selectedIncident.patient_birth_date)}
             </Descriptions.Item>
+            {selectedIncident.circumstances
+              ? <Descriptions.Item label="Обстоятельства">{selectedIncident.circumstances}</Descriptions.Item>
+              : null}
+            {selectedIncident.place
+              ? <Descriptions.Item label="Место">{selectedIncident.place}</Descriptions.Item>
+              : null}
+            {selectedIncident.consequences
+              ? <Descriptions.Item label="Последствия">{selectedIncident.consequences}</Descriptions.Item>
+              : null}
+            <Descriptions.Item label="Присутствие законного представителя">
+              {LEGAL_PRESENCE_LABELS[selectedIncident.legal_presence] ?? selectedIncident.legal_presence}
+            </Descriptions.Item>
             <Descriptions.Item label="Сотрудник">{selectedIncident.employee_fio}</Descriptions.Item>
             <Descriptions.Item label="Должность">{selectedIncident.employee_position}</Descriptions.Item>
-            <Descriptions.Item label="Юридическое присутствие">
-              {selectedIncident.legal_presence}
-            </Descriptions.Item>
-            <Descriptions.Item label="Обстоятельства">
-              {selectedIncident.circumstances}
-            </Descriptions.Item>
-            <Descriptions.Item label="Последствия">
-              {selectedIncident.consequences}
-            </Descriptions.Item>
-            <Descriptions.Item label="Создано">
-              {formatDateTime(selectedIncident.created_at)}
-            </Descriptions.Item>
+            <Descriptions.Item label="Статус">{selectedIncident.status}</Descriptions.Item>
+            <Descriptions.Item label="Создано">{formatDateTime(selectedIncident.created_at)}</Descriptions.Item>
           </Descriptions>
-        ) : null}
+        )}
       </Modal>
     </div>
   );
