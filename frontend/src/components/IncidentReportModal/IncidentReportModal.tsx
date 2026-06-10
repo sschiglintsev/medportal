@@ -81,7 +81,9 @@ export function IncidentReportModal({ open, onClose }: IncidentReportModalProps)
 
   const filteredViewTypes = useMemo(() => {
     if (!selectedCareType) return [];
-    return viewTypes.filter((vt) => vt.care_type === selectedCareType);
+    return viewTypes
+      .filter((vt) => vt.care_type === selectedCareType)
+      .sort((a, b) => a.name.localeCompare(b.name, 'ru', { numeric: true }));
   }, [viewTypes, selectedCareType]);
 
   const linkedIncidentTypes = useMemo(
@@ -166,38 +168,39 @@ export function IncidentReportModal({ open, onClose }: IncidentReportModalProps)
           </Form.Item>
         </div>
 
-        {/* 2. Вид медицинской помощи */}
-        <Form.Item
-          name="care_type"
-          label="Вид медицинской помощи"
-          rules={[{ required: true, message: 'Выберите вид медицинской помощи' }]}
-        >
-          <Select
-            placeholder="Выберите вид медицинской помощи"
-            onChange={handleCareTypeChange}
-            options={[
-              { value: 'Стационар', label: 'Стационар' },
-              { value: 'Поликлиника', label: 'Поликлиника' },
-            ]}
-          />
-        </Form.Item>
-
-        {/* 3. Отделение (после выбора вида помощи) */}
-        {selectedCareType && (
+        {/* 2–3. Вид медицинской помощи + Отделение */}
+        <div className="incident-report-modal__grid">
           <Form.Item
-            name="department_id"
-            label="Отделение"
-            rules={[{ required: true, message: 'Выберите отделение' }]}
+            name="care_type"
+            label="Вид медицинской помощи"
+            rules={[{ required: true, message: 'Выберите вид медицинской помощи' }]}
           >
             <Select
-              placeholder="Выберите отделение"
-              showSearch
-              optionFilterProp="label"
-              options={filteredDepartments.map((d) => ({ value: d.id, label: d.name }))}
-              notFoundContent="Нет отделений для данного вида помощи"
+              placeholder="Выберите вид медицинской помощи"
+              onChange={handleCareTypeChange}
+              options={[
+                { value: 'Стационар', label: 'Стационар' },
+                { value: 'Поликлиника', label: 'Поликлиника' },
+              ]}
             />
           </Form.Item>
-        )}
+
+          {selectedCareType ? (
+            <Form.Item
+              name="department_id"
+              label="Отделение"
+              rules={[{ required: true, message: 'Выберите отделение' }]}
+            >
+              <Select
+                placeholder="Выберите отделение"
+                showSearch
+                optionFilterProp="label"
+                options={filteredDepartments.map((d) => ({ value: d.id, label: d.name }))}
+                notFoundContent="Нет отделений для данного вида помощи"
+              />
+            </Form.Item>
+          ) : <div />}
+        </div>
 
         {/* 4–5. ФИО пациента + Дата рождения */}
         <div className="incident-report-modal__grid">
