@@ -1,4 +1,4 @@
-import { CarOutlined, ExperimentOutlined, HomeOutlined, ToolOutlined, UnorderedListOutlined } from '@ant-design/icons';
+import { BarChartOutlined, CarOutlined, ExperimentOutlined, HomeOutlined, ToolOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import { Menu, Typography } from 'antd';
 import { useState } from 'react';
 
@@ -7,9 +7,10 @@ import { AdminAhchRequestsPage } from './AdminAhchRequestsPage';
 import { AdminItRequestsPage } from './AdminItRequestsPage';
 import { AdminMetrologistRequestsPage } from './AdminMetrologistRequestsPage';
 import { AdminTransportRequestsPage } from './AdminTransportRequestsPage';
+import { AnalyticsPage } from './AnalyticsPage';
 import './ChiefCabinetPage.scss';
 
-type Section = 'incidents' | 'it-requests' | 'metrologist-requests' | 'ahch-requests' | 'transport-requests';
+type Section = 'incidents' | 'it-requests' | 'metrologist-requests' | 'ahch-requests' | 'transport-requests' | 'analytics';
 
 const SECTION_TITLES: Record<Section, string> = {
   incidents: 'Нежелательные события',
@@ -17,6 +18,7 @@ const SECTION_TITLES: Record<Section, string> = {
   'metrologist-requests': 'Заявки метрологу',
   'ahch-requests': 'Заявки в АХЧ',
   'transport-requests': 'Транспортные заявки',
+  analytics: 'Аналитика',
 };
 
 export function ChiefCabinetPage() {
@@ -36,6 +38,7 @@ export function ChiefCabinetPage() {
               { key: 'metrologist-requests', icon: <ExperimentOutlined />, label: 'Заявки метрологу' },
               { key: 'ahch-requests', icon: <HomeOutlined />, label: 'Заявки в АХЧ' },
               { key: 'transport-requests', icon: <CarOutlined />, label: 'Транспортные заявки' },
+              { key: 'analytics', icon: <BarChartOutlined />, label: 'Аналитика' },
             ]}
           />
         </aside>
@@ -49,6 +52,7 @@ export function ChiefCabinetPage() {
           {activeSection === 'ahch-requests' && <AdminAhchRequestsPage />}
           {activeSection === 'transport-requests' && <AdminTransportRequestsPage />}
           {activeSection === 'incidents' && <IncidentsRegistryPanel hideTitle />}
+          {activeSection === 'analytics' && <AnalyticsPage />}
         </div>
       </div>
     </section>

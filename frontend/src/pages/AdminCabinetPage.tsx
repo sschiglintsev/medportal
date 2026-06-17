@@ -1,5 +1,6 @@
 import {
   ApartmentOutlined,
+  BarChartOutlined,
   CarOutlined,
   ExperimentOutlined,
   FileTextOutlined,
@@ -27,6 +28,7 @@ import { AdminTransportRequestsPage } from './AdminTransportRequestsPage';
 import { AdminVehiclesPage } from './AdminVehiclesPage';
 import { AdminOrganizationPage } from './AdminOrganizationPage';
 import { AdminUsersPage } from './AdminUsersPage';
+import { AnalyticsPage } from './AnalyticsPage';
 import './AdminCabinetPage.scss';
 
 type Section =
@@ -42,7 +44,8 @@ type Section =
   | 'vehicles'
   | 'incidents'
   | 'users'
-  | 'organization';
+  | 'organization'
+  | 'analytics';
 
 const SECTION_TITLES: Record<Section, string> = {
   departments: 'Отделения',
@@ -58,6 +61,7 @@ const SECTION_TITLES: Record<Section, string> = {
   incidents: 'Нежелательные события',
   users: 'Пользователи',
   organization: 'Профиль организации',
+  analytics: 'Аналитика',
 };
 
 export function AdminCabinetPage() {
@@ -85,6 +89,8 @@ export function AdminCabinetPage() {
         return <AdminIncidentViewTypesPage />;
       case 'incidents':
         return <IncidentsRegistryPanel hideTitle />;
+      case 'analytics':
+        return <AnalyticsPage />;
       case 'users':
         return <AdminUsersPage />;
       case 'organization':
@@ -114,6 +120,7 @@ export function AdminCabinetPage() {
               { key: 'transport-requests', icon: <CarOutlined />, label: 'Транспортные заявки' },
               { key: 'vehicles', icon: <CarOutlined />, label: 'Автомобили' },
               { key: 'incidents', icon: <UnorderedListOutlined />, label: 'Нежелательные события' },
+              { key: 'analytics', icon: <BarChartOutlined />, label: 'Аналитика' },
               { type: 'divider' },
               { key: 'users', icon: <TeamOutlined />, label: 'Пользователи' },
               { key: 'organization', icon: <SettingOutlined />, label: 'Профиль организации' },

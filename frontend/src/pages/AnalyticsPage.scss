@@ -1,0 +1,38 @@
+.analytics-page {
+  &__filters {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+
+  &__type-select {
+    min-width: 220px;
+    max-width: 400px;
+    flex: 1;
+  }
+
+  &__chart-wrapper {
+    background: #ffffff;
+    border: 1px solid #e7eaf3;
+    border-radius: 10px;
+    padding: 24px 24px 16px;
+    height: 420px;
+  }
+
+  &__empty {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 200px;
+    background: #ffffff;
+    border: 1px solid #e7eaf3;
+    border-radius: 10px;
+  }
+
+  &__error {
+    display: block;
+    margin-bottom: 16px;
+  }
+}
