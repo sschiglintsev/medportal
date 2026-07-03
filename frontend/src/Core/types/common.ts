@@ -47,6 +47,7 @@ export type ItRequest = {
   department: string;
   location: string;
   request_text: string;
+  remote_access_id: string | null;
   status: string;
   comment: string | null;
   created_at: string;

@@ -17,6 +17,7 @@ type ItRequestFormValues = {
   department: string;
   location: string;
   request_text: string;
+  remote_access_id?: string;
 };
 
 const formatPhoneMask = (value: string): string => {
@@ -154,6 +155,12 @@ export function ItRequestModal({ open, onClose }: ItRequestModalProps) {
             rules={[{ required: true, message: 'Опишите проблему' }]}
           >
             <Input.TextArea rows={4} />
+          </Form.Item>
+          <Form.Item
+            name="remote_access_id"
+            label="Удаленный доступ (рудеск / ассистент)"
+          >
+            <Input placeholder="Введите ID" />
           </Form.Item>
 
           <Button type="primary" htmlType="submit" loading={submitting}>

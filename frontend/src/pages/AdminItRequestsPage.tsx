@@ -179,6 +179,9 @@ export function AdminItRequestsPage() {
             <p><strong>Телефон:</strong> {selectedItem.phone}</p>
             <p><strong>Отделение:</strong> {selectedItem.department}</p>
             <p><strong>Кабинет:</strong> {selectedItem.location}</p>
+            {selectedItem.remote_access_id && (
+              <p><strong>Удаленный доступ:</strong> {selectedItem.remote_access_id}</p>
+            )}
             <p>
               <strong>Статус: </strong>
               {canChangeStatus ? (

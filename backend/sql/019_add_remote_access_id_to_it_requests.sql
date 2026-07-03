@@ -1,0 +1,2 @@
+ALTER TABLE it_requests
+  ADD COLUMN IF NOT EXISTS remote_access_id VARCHAR(100) DEFAULT NULL;

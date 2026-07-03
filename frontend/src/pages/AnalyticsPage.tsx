@@ -8,7 +8,9 @@ import {
   Title,
   Tooltip,
 } from 'chart.js';
+import { FileExcelOutlined } from '@ant-design/icons';
 import { Button, DatePicker, Select, Typography } from 'antd';
+import * as XLSX from 'xlsx';
 import type { Dayjs } from 'dayjs';
 import { useMemo, useState } from 'react';
 import { Line } from 'react-chartjs-2';
@@ -45,6 +47,35 @@ function generateDateRange(from: Dayjs, to: Dayjs): string[] {
     current = current.add(1, 'day');
   }
   return dates;
+}
+
+function handleExport(
+  rawPoints: AnalyticsPoint[],
+  activeTypes: RequestType[],
+  range: RangeValue,
+) {
+  if (!range) return;
+
+  const periodStr = `${range[0].format('DD.MM.YYYY')} — ${range[1].format('DD.MM.YYYY')}`;
+  const typeLabels = Object.fromEntries(REQUEST_TYPES.map((rt) => [rt.key, rt.label]));
+
+  const totals: Partial<Record<RequestType, number>> = {};
+  for (const p of rawPoints) {
+    if (activeTypes.includes(p.type)) {
+      totals[p.type] = (totals[p.type] ?? 0) + p.count;
+    }
+  }
+
+  const rows = activeTypes.map((type) => ({
+    'Событие':    typeLabels[type],
+    'Период':     periodStr,
+    'Количество': totals[type] ?? 0,
+  }));
+
+  const workbook  = XLSX.utils.book_new();
+  const worksheet = XLSX.utils.json_to_sheet(rows);
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Аналитика');
+  XLSX.writeFile(workbook, `analytics_${range[0].format('YYYY-MM-DD')}_${range[1].format('YYYY-MM-DD')}.xlsx`);
 }
 
 function buildChartData(
@@ -141,6 +172,13 @@ export function AnalyticsPage() {
           loading={loading}
         >
           Применить фильтр
+        </Button>
+        <Button
+          icon={<FileExcelOutlined />}
+          onClick={() => handleExport(rawPoints, activeTypes, range)}
+          disabled={!hasData}
+        >
+          Экспорт в Excel
         </Button>
       </div>
 

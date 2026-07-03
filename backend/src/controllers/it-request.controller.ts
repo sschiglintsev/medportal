@@ -12,6 +12,7 @@ type CreateItRequestBody = {
   department: string;
   location: string;
   request_text: string;
+  remote_access_id?: string;
 };
 
 export async function createItRequest(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -22,6 +23,7 @@ export async function createItRequest(req: Request, res: Response, next: NextFun
     const department = body.department?.trim();
     const location = body.location?.trim();
     const requestText = body.request_text?.trim();
+    const remoteAccessId = body.remote_access_id?.trim() || null;
 
     if (!fullName || !phone || !department || !location || !requestText) {
       res.status(400).json({ message: 'Missing required fields' });
@@ -30,18 +32,20 @@ export async function createItRequest(req: Request, res: Response, next: NextFun
 
     const result = await withDbClient((client) =>
       client.query(
-        `INSERT INTO it_requests (full_name, phone, department, location, request_text)
-         VALUES ($1, $2, $3, $4, $5)
+        `INSERT INTO it_requests (full_name, phone, department, location, request_text, remote_access_id)
+         VALUES ($1, $2, $3, $4, $5, $6)
          RETURNING id, status, created_at`,
-        [fullName, phone, department, location, requestText],
+        [fullName, phone, department, location, requestText, remoteAccessId],
       ),
     );
 
     const created = result.rows[0] as { id: number; status: string; created_at: string };
 
+    const remoteAccessLine = remoteAccessId ? `\nУдаленный доступ: ${remoteAccessId}` : '';
+
     void notifyRoleUsers(
       'it_department',
-      `Новая заявка в ИТ #${created.id}\nОтделение: ${department}\nКабинет: ${location}\nТелефон: ${phone}\nОписание: ${requestText.slice(0, 200)}`,
+      `Новая заявка в ИТ #${created.id}\nОтделение: ${department}\nКабинет: ${location}\nТелефон: ${phone}${remoteAccessLine}\nОписание: ${requestText.slice(0, 200)}`,
     );
 
     res.status(201).json(created);
@@ -111,7 +115,7 @@ export async function getItRequestByIdPublic(req: Request, res: Response, next: 
 
     const result = await withDbClient((client) =>
       client.query(
-        `SELECT id, full_name, department, location, request_text, status, comment, created_at
+        `SELECT id, full_name, department, location, request_text, remote_access_id, status, comment, created_at
          FROM it_requests WHERE id = $1`,
         [id],
       ),
@@ -132,7 +136,7 @@ export async function getItRequests(_req: Request, res: Response, next: NextFunc
   try {
     const result = await withDbClient((client) =>
       client.query(
-        `SELECT id, full_name, phone, department, location, request_text, status, comment, created_at
+        `SELECT id, full_name, phone, department, location, request_text, remote_access_id, status, comment, created_at
          FROM it_requests
          ORDER BY created_at DESC`,
       ),

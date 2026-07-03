@@ -9,6 +9,7 @@ export type CreateItRequestPayload = {
   department: string;
   location: string;
   request_text: string;
+  remote_access_id?: string;
 };
 
 export type CreateItRequestResponse = {
