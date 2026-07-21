@@ -55,7 +55,9 @@ export async function createDocument(req: Request, res: Response, next: NextFunc
     }
 
     const fileUrl = `/uploads/documents/${file.filename}`;
-    const originalFilename = file.originalname || null;
+    const originalFilename = file.originalname
+      ? Buffer.from(file.originalname, 'latin1').toString('utf8')
+      : null;
 
     const result = await withDbClient((client) =>
       client.query(
@@ -93,7 +95,9 @@ export async function updateDocument(req: Request, res: Response, next: NextFunc
 
     if (file) {
       const fileUrl = `/uploads/documents/${file.filename}`;
-      const originalFilename = file.originalname || null;
+      const originalFilename = file.originalname
+        ? Buffer.from(file.originalname, 'latin1').toString('utf8')
+        : null;
       const result = await withDbClient((client) =>
         client.query(
           `UPDATE documents
