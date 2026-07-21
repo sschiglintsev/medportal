@@ -17,13 +17,13 @@ export async function getDocuments(req: Request, res: Response, next: NextFuncti
 
     if (folderIdParam !== undefined) {
       const folderId = Number(folderIdParam);
-      query = `SELECT id, folder_id, title, description, file_url, sort_order, created_at, updated_at
+      query = `SELECT id, folder_id, title, description, file_url, original_filename, sort_order, created_at, updated_at
                FROM documents
                WHERE folder_id = $1
                ORDER BY sort_order ASC, created_at DESC`;
       params = [folderId];
     } else {
-      query = `SELECT id, folder_id, title, description, file_url, sort_order, created_at, updated_at
+      query = `SELECT id, folder_id, title, description, file_url, original_filename, sort_order, created_at, updated_at
                FROM documents
                ORDER BY created_at DESC`;
       params = [];
@@ -55,13 +55,14 @@ export async function createDocument(req: Request, res: Response, next: NextFunc
     }
 
     const fileUrl = `/uploads/documents/${file.filename}`;
+    const originalFilename = file.originalname || null;
 
     const result = await withDbClient((client) =>
       client.query(
-        `INSERT INTO documents (folder_id, title, description, file_url)
-         VALUES ($1, $2, $3, $4)
-         RETURNING id, folder_id, title, description, file_url, sort_order, created_at, updated_at`,
-        [folder_id, title, description, fileUrl],
+        `INSERT INTO documents (folder_id, title, description, file_url, original_filename)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING id, folder_id, title, description, file_url, original_filename, sort_order, created_at, updated_at`,
+        [folder_id, title, description, fileUrl, originalFilename],
       ),
     );
 
@@ -92,6 +93,7 @@ export async function updateDocument(req: Request, res: Response, next: NextFunc
 
     if (file) {
       const fileUrl = `/uploads/documents/${file.filename}`;
+      const originalFilename = file.originalname || null;
       const result = await withDbClient((client) =>
         client.query(
           `UPDATE documents
@@ -99,10 +101,11 @@ export async function updateDocument(req: Request, res: Response, next: NextFunc
                title = $2,
                description = $3,
                file_url = $4,
+               original_filename = $5,
                updated_at = NOW()
-           WHERE id = $5
-           RETURNING id, folder_id, title, description, file_url, sort_order, created_at, updated_at`,
-          [folder_id, title, description, fileUrl, id],
+           WHERE id = $6
+           RETURNING id, folder_id, title, description, file_url, original_filename, sort_order, created_at, updated_at`,
+          [folder_id, title, description, fileUrl, originalFilename, id],
         ),
       );
 
@@ -123,7 +126,7 @@ export async function updateDocument(req: Request, res: Response, next: NextFunc
              description = $3,
              updated_at = NOW()
          WHERE id = $4
-         RETURNING id, folder_id, title, description, file_url, sort_order, created_at, updated_at`,
+         RETURNING id, folder_id, title, description, file_url, original_filename, sort_order, created_at, updated_at`,
         [folder_id, title, description, id],
       ),
     );

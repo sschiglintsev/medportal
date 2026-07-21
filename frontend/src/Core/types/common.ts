@@ -44,6 +44,7 @@ export type PortalDocument = {
   title: string;
   description: string | null;
   file_url: string;
+  original_filename: string | null;
   sort_order: number;
   created_at: string;
   updated_at: string;

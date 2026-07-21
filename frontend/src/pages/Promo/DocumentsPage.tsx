@@ -152,6 +152,7 @@ export function DocumentsPage() {
                             href={`${API_BASE}${doc.file_url}`}
                             target="_blank"
                             rel="noreferrer"
+                            download={doc.original_filename ?? true}
                             className="docs-page__doc-item"
                           >
                             <FileTextOutlined className="docs-page__doc-icon" />

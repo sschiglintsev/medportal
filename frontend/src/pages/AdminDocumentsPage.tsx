@@ -385,8 +385,13 @@ export function AdminDocumentsPage() {
                     dataIndex: 'file_url',
                     key: 'file_url',
                     width: 100,
-                    render: (v: string) => (
-                      <a href={`${API_BASE}${v}`} target="_blank" rel="noreferrer">
+                    render: (v: string, record: PortalDocument) => (
+                      <a
+                        href={`${API_BASE}${v}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        download={record.original_filename ?? true}
+                      >
                         Открыть
                       </a>
                     ),
