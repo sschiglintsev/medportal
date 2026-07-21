@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+
 import { useAppStore } from '../../Core/store/app.store';
 import './Footer.scss';
 
@@ -29,13 +31,19 @@ export function Footer() {
           <h5>Навигация</h5>
           <a href="#hero">Главные</a>
           <a href="#news">Новости</a>
-          <a href="#documents">Документы</a>
+          <Link to="/documents">Документы</Link>
         </div>
 
         <div className="promo-footer__col">
           <h5>Контакты</h5>
-          <p>Телефон: +7 (347) 000-00-00</p>
-          <p>Email: info@gdkb17.ru</p>
+          <p>
+            Телефон:{' '}
+            <a href="tel:+73472466959">+7 (347) 246-69-59</a>
+          </p>
+          <p>
+            Email:{' '}
+            <a href="mailto:ufa.gdkb17@doctorrb.ru">ufa.gdkb17@doctorrb.ru</a>
+          </p>
         </div>
       </div>
 

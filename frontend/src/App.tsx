@@ -1,5 +1,6 @@
 import { ConfigProvider } from 'antd';
 import { useEffect } from 'react';
+import { Route, Routes } from 'react-router-dom';
 
 import { userHasCabinetAccess } from './Core/cabinetAccess';
 import { fetchOrganization } from './Core/services/organization.service';
@@ -11,6 +12,7 @@ import { DispatcherCabinetPage } from './pages/DispatcherCabinetPage';
 import { FacilityCabinetPage } from './pages/FacilityCabinetPage';
 import { ItDepartmentCabinetPage } from './pages/ItDepartmentCabinetPage';
 import { MetrologistCabinetPage } from './pages/MetrologistCabinetPage';
+import { DocumentsPage } from './pages/Promo/DocumentsPage';
 import { PromoPage } from './pages/Promo/PromoPage';
 import { QualityControlCabinetPage } from './pages/QualityControlCabinetPage';
 
@@ -54,6 +56,13 @@ function App() {
     return <AdminCabinetPage />;
   })();
 
+  const mainContent =
+    userHasCabinetAccess(permissions) && portalView === 'cabinet' ? (
+      <MainLayout>{cabinetContent}</MainLayout>
+    ) : (
+      <PromoPage />
+    );
+
   return (
     <ConfigProvider
       theme={{
@@ -62,11 +71,10 @@ function App() {
         },
       }}
     >
-      {userHasCabinetAccess(permissions) && portalView === 'cabinet' ? (
-        <MainLayout>{cabinetContent}</MainLayout>
-      ) : (
-        <PromoPage />
-      )}
+      <Routes>
+        <Route path="/documents" element={<DocumentsPage />} />
+        <Route path="/*" element={mainContent} />
+      </Routes>
     </ConfigProvider>
   );
 }

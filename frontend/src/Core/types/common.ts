@@ -30,12 +30,21 @@ export type Announcement = {
   updated_at: string;
 };
 
+export type DocumentFolder = {
+  id: number;
+  name: string;
+  parent_id: number | null;
+  sort_order: number;
+  created_at: string;
+};
+
 export type PortalDocument = {
   id: number;
-  category: string;
+  folder_id: number | null;
   title: string;
   description: string | null;
   file_url: string;
+  sort_order: number;
   created_at: string;
   updated_at: string;
 };

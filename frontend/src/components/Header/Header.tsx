@@ -1,4 +1,5 @@
 import { DownOutlined, MenuOutlined } from '@ant-design/icons';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button, Descriptions, Dropdown, Form, Input, Modal, Select, Tag, message } from 'antd';
 import type { MenuProps } from 'antd';
 import { useEffect, useState } from 'react';
@@ -180,10 +181,16 @@ export function Header() {
     setTransportRequest(null);
     setTransportError(null);
   };
+  const navigate = useNavigate();
   const user = useAppStore((state) => state.user);
   const setAuth = useAppStore((state) => state.setAuth);
   const setPortalView = useAppStore((state) => state.setPortalView);
   const clearAuth = useAppStore((state) => state.clearAuth);
+
+  const goToCabinet = () => {
+    setPortalView('cabinet');
+    navigate('/');
+  };
   const organization = useAppStore((state) => state.organization);
   const logoUrl = organization?.logo_url
     ? organization.logo_url.startsWith('http')
@@ -241,7 +248,7 @@ export function Header() {
   const mobileMenuItems: MenuProps['items'] = [
     { key: 'hero', label: <a href="#hero">Главные</a> },
     { key: 'news', label: <a href="#news">Новости</a> },
-    { key: 'documents', label: <a href="#documents">Документы</a> },
+    { key: 'documents', label: <Link to="/documents">Документы</Link> },
     {
       key: 'status-group',
       label: 'Статус заявок',
@@ -276,7 +283,7 @@ export function Header() {
       return;
     }
     if (key === 'cabinet') {
-      setPortalView('cabinet');
+      goToCabinet();
       return;
     }
     if (key === 'it-status') {
@@ -346,7 +353,7 @@ export function Header() {
           <nav className="promo-header__menu">
             <a href="#hero">Главные</a>
             <a href="#news">Новости</a>
-            <a href="#documents">Документы</a>
+            <Link to="/documents">Документы</Link>
           </nav>
 
           <div className="promo-header__actions">
@@ -359,7 +366,7 @@ export function Header() {
               <>
                 <span className="promo-header__user">{user.fullName}</span>
                 {userHasCabinetAccess(user.permissions) ? (
-                  <Button type="primary" onClick={() => setPortalView('cabinet')}>
+                  <Button type="primary" onClick={goToCabinet}>
                     Личный кабинет
                   </Button>
                 ) : null}

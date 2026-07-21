@@ -3,21 +3,33 @@ import { NextFunction, Request, Response } from 'express';
 import { withDbClient } from '../db';
 
 type DocumentBody = {
-  category: string;
+  folder_id?: number | null;
   title: string;
   description?: string;
 };
 
-export async function getDocuments(_req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function getDocuments(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const result = await withDbClient((client) =>
-      client.query(
-        `SELECT id, category, title, description, file_url, created_at, updated_at
-         FROM documents
-         ORDER BY category ASC, created_at DESC`,
-      ),
-    );
+    const folderIdParam = req.query.folder_id;
 
+    let query: string;
+    let params: unknown[];
+
+    if (folderIdParam !== undefined) {
+      const folderId = Number(folderIdParam);
+      query = `SELECT id, folder_id, title, description, file_url, sort_order, created_at, updated_at
+               FROM documents
+               WHERE folder_id = $1
+               ORDER BY sort_order ASC, created_at DESC`;
+      params = [folderId];
+    } else {
+      query = `SELECT id, folder_id, title, description, file_url, sort_order, created_at, updated_at
+               FROM documents
+               ORDER BY created_at DESC`;
+      params = [];
+    }
+
+    const result = await withDbClient((client) => client.query(query, params));
     res.status(200).json(result.rows);
   } catch (error) {
     next(error);
@@ -28,12 +40,12 @@ export async function createDocument(req: Request, res: Response, next: NextFunc
   try {
     const body = req.body as Partial<DocumentBody>;
     const file = req.file;
-    const category = body.category?.trim();
+    const folder_id = body.folder_id != null ? Number(body.folder_id) : null;
     const title = body.title?.trim();
     const description = body.description?.trim() || null;
 
-    if (!category || !title) {
-      res.status(400).json({ message: 'Category and title are required' });
+    if (!title) {
+      res.status(400).json({ message: 'Title is required' });
       return;
     }
 
@@ -46,10 +58,10 @@ export async function createDocument(req: Request, res: Response, next: NextFunc
 
     const result = await withDbClient((client) =>
       client.query(
-        `INSERT INTO documents (category, title, description, file_url)
+        `INSERT INTO documents (folder_id, title, description, file_url)
          VALUES ($1, $2, $3, $4)
-         RETURNING id, category, title, description, file_url, created_at, updated_at`,
-        [category, title, description, fileUrl],
+         RETURNING id, folder_id, title, description, file_url, sort_order, created_at, updated_at`,
+        [folder_id, title, description, fileUrl],
       ),
     );
 
@@ -69,12 +81,12 @@ export async function updateDocument(req: Request, res: Response, next: NextFunc
 
     const body = req.body as Partial<DocumentBody>;
     const file = req.file;
-    const category = body.category?.trim();
+    const folder_id = body.folder_id != null ? Number(body.folder_id) : null;
     const title = body.title?.trim();
     const description = body.description?.trim() || null;
 
-    if (!category || !title) {
-      res.status(400).json({ message: 'Category and title are required' });
+    if (!title) {
+      res.status(400).json({ message: 'Title is required' });
       return;
     }
 
@@ -83,14 +95,14 @@ export async function updateDocument(req: Request, res: Response, next: NextFunc
       const result = await withDbClient((client) =>
         client.query(
           `UPDATE documents
-           SET category = $1,
+           SET folder_id = $1,
                title = $2,
                description = $3,
                file_url = $4,
                updated_at = NOW()
            WHERE id = $5
-           RETURNING id, category, title, description, file_url, created_at, updated_at`,
-          [category, title, description, fileUrl, id],
+           RETURNING id, folder_id, title, description, file_url, sort_order, created_at, updated_at`,
+          [folder_id, title, description, fileUrl, id],
         ),
       );
 
@@ -106,13 +118,13 @@ export async function updateDocument(req: Request, res: Response, next: NextFunc
     const result = await withDbClient((client) =>
       client.query(
         `UPDATE documents
-         SET category = $1,
+         SET folder_id = $1,
              title = $2,
              description = $3,
              updated_at = NOW()
          WHERE id = $4
-         RETURNING id, category, title, description, file_url, created_at, updated_at`,
-        [category, title, description, id],
+         RETURNING id, folder_id, title, description, file_url, sort_order, created_at, updated_at`,
+        [folder_id, title, description, id],
       ),
     );
 
