@@ -147,14 +147,7 @@ export function DocumentsPage() {
                       <h3 className="docs-page__docs-title">Документы раздела</h3>
                       <div className="docs-page__doc-list">
                         {documents.map((doc) => (
-                          <a
-                            key={doc.id}
-                            href={`${API_BASE}${doc.file_url}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            download={doc.original_filename ?? true}
-                            className="docs-page__doc-item"
-                          >
+                          <div key={doc.id} className="docs-page__doc-item">
                             <FileTextOutlined className="docs-page__doc-icon" />
                             <div className="docs-page__doc-info">
                               <div className="docs-page__doc-name">{doc.title}</div>
@@ -162,8 +155,24 @@ export function DocumentsPage() {
                                 <div className="docs-page__doc-desc">{doc.description}</div>
                               )}
                             </div>
-                            <span className="docs-page__doc-download">Открыть</span>
-                          </a>
+                            <div className="docs-page__doc-actions">
+                              <a
+                                href={`${API_BASE}${doc.file_url}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="docs-page__doc-btn docs-page__doc-btn--open"
+                              >
+                                Открыть
+                              </a>
+                              <a
+                                href={`${API_BASE}${doc.file_url}`}
+                                download={doc.original_filename ?? true}
+                                className="docs-page__doc-btn docs-page__doc-btn--download"
+                              >
+                                Скачать
+                              </a>
+                            </div>
+                          </div>
                         ))}
                       </div>
                     </>

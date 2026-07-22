@@ -136,13 +136,6 @@
   background: $color-white;
   border: 1px solid $color-border;
   border-radius: $radius-md;
-  text-decoration: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
-
-  &:hover {
-    border-color: $color-primary;
-    box-shadow: 0 2px 8px rgba(76, 79, 234, 0.1);
-  }
 }
 
 .docs-page__doc-icon {
@@ -168,11 +161,35 @@
   margin-top: 2px;
 }
 
-.docs-page__doc-download {
+.docs-page__doc-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.docs-page__doc-btn {
   font-size: 13px;
-  color: $color-primary;
-  white-space: nowrap;
   font-weight: 500;
+  padding: 5px 12px;
+  border-radius: 6px;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: opacity 0.2s;
+
+  &:hover {
+    opacity: 0.8;
+  }
+
+  &--open {
+    background: $color-primary;
+    color: $color-white;
+  }
+
+  &--download {
+    background: $color-bg-soft;
+    color: $color-primary;
+    border: 1px solid $color-border;
+  }
 }
 
 .docs-page__empty {
