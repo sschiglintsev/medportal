@@ -42,6 +42,13 @@ async function ensureTable(): Promise<void> {
 const ALLOWED_STATUSES = ['new', 'in_progress', 'done', 'cancelled'] as const;
 type TransportRequestStatus = (typeof ALLOWED_STATUSES)[number];
 
+const STATUS_LABELS_RU: Record<TransportRequestStatus, string> = {
+  new: 'Новая',
+  in_progress: 'В работе',
+  done: 'Выполнена',
+  cancelled: 'Отменена',
+};
+
 type CreateTransportRequestBody = {
   department: string;
   initiator: string;
@@ -188,7 +195,7 @@ export async function updateTransportRequestStatus(req: Request, res: Response, 
 
     const result = await withDbClient((client) =>
       client.query(
-        `UPDATE transport_requests SET status = $1 WHERE id = $2 RETURNING id, status`,
+        `UPDATE transport_requests SET status = $1 WHERE id = $2 RETURNING id, status, department, route_from, route_to, purpose, passenger_count`,
         [status, id],
       ),
     );
@@ -198,7 +205,26 @@ export async function updateTransportRequestStatus(req: Request, res: Response, 
       return;
     }
 
-    res.status(200).json(result.rows[0]);
+    const updated = result.rows[0] as {
+      id: number;
+      status: string;
+      department: string;
+      route_from: string;
+      route_to: string;
+      purpose: string;
+      passenger_count: number;
+    };
+
+    void notifyRoleUsers(
+      'dispatcher',
+      `Статус транспортной заявки #${updated.id} изменён на «${STATUS_LABELS_RU[status]}»\n` +
+      `Отделение: ${updated.department}\n` +
+      `Маршрут: ${updated.route_from} — ${updated.route_to}\n` +
+      `Цель: ${updated.purpose}\n` +
+      `Пассажиров: ${updated.passenger_count}`,
+    );
+
+    res.status(200).json(updated);
   } catch (error) {
     next(error);
   }

@@ -6,6 +6,13 @@ import { notifyRoleUsers } from '../services/max-bot.service';
 const ALLOWED_STATUSES = ['new', 'in_progress', 'done', 'cancelled'] as const;
 type MetrologistRequestStatus = (typeof ALLOWED_STATUSES)[number];
 
+const STATUS_LABELS_RU: Record<MetrologistRequestStatus, string> = {
+  new: 'Новая',
+  in_progress: 'В работе',
+  done: 'Выполнена',
+  cancelled: 'Отменена',
+};
+
 type CreateMetrologistRequestBody = {
   full_name: string;
   phone: string;
@@ -78,7 +85,7 @@ export async function updateMetrologistRequestStatus(req: Request, res: Response
 
     const result = await withDbClient((client) =>
       client.query(
-        `UPDATE metrologist_requests SET status = $1 WHERE id = $2 RETURNING id, status`,
+        `UPDATE metrologist_requests SET status = $1 WHERE id = $2 RETURNING id, status, department, location, phone, request_text`,
         [status, id],
       ),
     );
@@ -88,7 +95,25 @@ export async function updateMetrologistRequestStatus(req: Request, res: Response
       return;
     }
 
-    res.status(200).json(result.rows[0]);
+    const updated = result.rows[0] as {
+      id: number;
+      status: string;
+      department: string;
+      location: string;
+      phone: string;
+      request_text: string;
+    };
+
+    void notifyRoleUsers(
+      'metrologist',
+      `Статус заявки метрологу #${updated.id} изменён на «${STATUS_LABELS_RU[status]}»\n` +
+      `Отделение: ${updated.department}\n` +
+      `Кабинет: ${updated.location}\n` +
+      `Телефон: ${updated.phone}\n` +
+      `Описание: ${updated.request_text.slice(0, 200)}`,
+    );
+
+    res.status(200).json(updated);
   } catch (error) {
     next(error);
   }
