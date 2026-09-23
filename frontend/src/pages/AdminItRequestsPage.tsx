@@ -1,4 +1,4 @@
-import { Button, Input, List, Modal, Select, Space, Tag, Typography, message } from 'antd';
+import { Button, Input, List, Modal, Select, Space, Tag, Tooltip, Typography, message } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { formatDateTime } from '../Core/date.utils';
@@ -34,6 +34,19 @@ function StatusTag({ status }: { status: string }) {
       {STATUS_LABELS[s] ?? status}
     </Tag>
   );
+}
+
+function getOverdueDays(createdAt: string, urgencyDays: number | null | undefined): number {
+  if (!urgencyDays) return 0;
+  const deadline = new Date(createdAt);
+  deadline.setDate(deadline.getDate() + urgencyDays);
+  const diffMs = Date.now() - deadline.getTime();
+  if (diffMs <= 0) return 0;
+  return Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+}
+
+function isOverdue(createdAt: string, urgencyDays: number | null | undefined): boolean {
+  return getOverdueDays(createdAt, urgencyDays) > 0;
 }
 
 export function AdminItRequestsPage() {
@@ -148,22 +161,37 @@ export function AdminItRequestsPage() {
         loading={loading}
         dataSource={filteredItems}
         locale={{ emptyText: 'Пока нет заявок в ИТ' }}
-        renderItem={(item) => (
-          <List.Item className="admin-it-requests-page__item" onClick={() => { setSelectedItem(item); setCommentText(item.comment ?? ''); }}>
-            <div className="admin-it-requests-page__main">
-              <div className="admin-it-requests-page__title">#{item.id} — {item.full_name}</div>
-              <div className="admin-it-requests-page__meta">
-                <span>{item.department}</span>
-                <span>Кабинет: {item.location}</span>
-                <span>{formatDateTime(item.created_at)}</span>
+        renderItem={(item) => {
+          const overdueDays = getOverdueDays(item.created_at, item.urgency_days);
+          const overdue = overdueDays > 0;
+          return (
+            <List.Item
+              className={`admin-it-requests-page__item${overdue ? ' admin-it-requests-page__item--overdue' : ''}`}
+              onClick={() => { setSelectedItem(item); setCommentText(item.comment ?? ''); }}
+            >
+              <div className="admin-it-requests-page__main">
+                <div className="admin-it-requests-page__title">#{item.id} — {item.full_name}</div>
+                <div className="admin-it-requests-page__meta">
+                  <span>{item.department}</span>
+                  <span>Кабинет: {item.location}</span>
+                  <span>{formatDateTime(item.created_at)}</span>
+                  {item.urgency_name && (
+                    <Tooltip title={overdue ? 'Срок исполнения истёк' : undefined}>
+                      <Tag color={overdue ? 'red' : 'orange'}>
+                        {item.urgency_name}
+                        {overdue ? ` — Просрочено (на ${overdueDays} дн.)` : ''}
+                      </Tag>
+                    </Tooltip>
+                  )}
+                </div>
+                <Typography.Paragraph ellipsis={{ rows: 2 }} className="admin-it-requests-page__text">
+                  {item.request_text}
+                </Typography.Paragraph>
               </div>
-              <Typography.Paragraph ellipsis={{ rows: 2 }} className="admin-it-requests-page__text">
-                {item.request_text}
-              </Typography.Paragraph>
-            </div>
-            <StatusTag status={item.status} />
-          </List.Item>
-        )}
+              <StatusTag status={item.status} />
+            </List.Item>
+          );
+        }}
       />
 
       <Modal
@@ -197,6 +225,17 @@ export function AdminItRequestsPage() {
                 <StatusTag status={selectedItem.status} />
               )}
             </p>
+            {selectedItem.urgency_name && (
+              <p>
+                <strong>Срочность:</strong>{' '}
+                <Tag color={isOverdue(selectedItem.created_at, selectedItem.urgency_days) ? 'red' : 'orange'}>
+                  {selectedItem.urgency_name}
+                  {getOverdueDays(selectedItem.created_at, selectedItem.urgency_days) > 0
+                    ? ` — Просрочено (на ${getOverdueDays(selectedItem.created_at, selectedItem.urgency_days)} дн.)`
+                    : ''}
+                </Tag>
+              </p>
+            )}
             <p><strong>Создано:</strong> {formatDateTime(selectedItem.created_at)}</p>
             <p><strong>Описание:</strong></p>
             <Typography.Paragraph>{selectedItem.request_text}</Typography.Paragraph>

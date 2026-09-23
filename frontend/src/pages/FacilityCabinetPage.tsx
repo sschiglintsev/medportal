@@ -1,5 +1,5 @@
 import { BellOutlined, HomeOutlined } from '@ant-design/icons';
-import { Button, Input, List, Menu, Modal, Select, Space, Tag, Typography, message } from 'antd';
+import { Button, Input, List, Menu, Modal, Select, Space, Tag, Tooltip, Typography, message } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { MaxLinkCard } from '../components/MaxLinkCard/MaxLinkCard';
@@ -36,6 +36,13 @@ const STATUS_OPTIONS = (Object.keys(STATUS_LABELS) as AhchRequestStatus[]).map((
 function StatusTag({ status }: { status: string }) {
   const typedStatus = status as AhchRequestStatus;
   return <Tag color={STATUS_COLORS[typedStatus] ?? 'default'}>{STATUS_LABELS[typedStatus] ?? status}</Tag>;
+}
+
+function isOverdue(createdAt: string, urgencyDays: number | null | undefined): boolean {
+  if (!urgencyDays) return false;
+  const deadline = new Date(createdAt);
+  deadline.setDate(deadline.getDate() + urgencyDays);
+  return deadline < new Date();
 }
 
 type Section = 'ahch-requests' | 'notifications';
@@ -179,28 +186,36 @@ export function FacilityCabinetPage() {
             loading={loading}
             dataSource={filteredItems}
             locale={{ emptyText: 'Пока нет заявок в АХЧ' }}
-            renderItem={(item) => (
-              <List.Item
-                className="facility-cabinet-page__item"
-                onClick={() => {
-                  setSelectedItem(item);
-                  setCommentText(item.comment ?? '');
-                }}
-              >
-                <div className="facility-cabinet-page__main">
-                  <div className="facility-cabinet-page__request-title">#{item.id} — {item.address}</div>
-                  <div className="facility-cabinet-page__meta">
-                    <span>{item.department}</span>
-                    <span>Телефон: {item.employee_phone}</span>
-                    <span>{formatDateTime(item.created_at)}</span>
+            renderItem={(item) => {
+              const overdue = isOverdue(item.created_at, item.urgency_days);
+              return (
+                <List.Item
+                  className={`facility-cabinet-page__item${overdue ? ' facility-cabinet-page__item--overdue' : ''}`}
+                  onClick={() => {
+                    setSelectedItem(item);
+                    setCommentText(item.comment ?? '');
+                  }}
+                >
+                  <div className="facility-cabinet-page__main">
+                    <div className="facility-cabinet-page__request-title">#{item.id} — {item.address}</div>
+                    <div className="facility-cabinet-page__meta">
+                      <span>{item.department}</span>
+                      <span>Телефон: {item.employee_phone}</span>
+                      <span>{formatDateTime(item.created_at)}</span>
+                      {item.urgency_name && (
+                        <Tooltip title={overdue ? 'Срок исполнения истёк' : undefined}>
+                          <Tag color={overdue ? 'red' : 'orange'}>{item.urgency_name}</Tag>
+                        </Tooltip>
+                      )}
+                    </div>
+                    <Typography.Paragraph ellipsis={{ rows: 2 }} className="facility-cabinet-page__text">
+                      {item.request_text}
+                    </Typography.Paragraph>
                   </div>
-                  <Typography.Paragraph ellipsis={{ rows: 2 }} className="facility-cabinet-page__text">
-                    {item.request_text}
-                  </Typography.Paragraph>
-                </div>
-                <StatusTag status={item.status} />
-              </List.Item>
-            )}
+                  <StatusTag status={item.status} />
+                </List.Item>
+              );
+            }}
           />
           </>
           ) : null}
@@ -219,6 +234,15 @@ export function FacilityCabinetPage() {
             <p><strong>Адрес:</strong> {selectedItem.address}</p>
             <p><strong>Отделение:</strong> {selectedItem.department}</p>
             <p><strong>Телефон сотрудника:</strong> {selectedItem.employee_phone}</p>
+            {selectedItem.urgency_name && (
+              <p>
+                <strong>Срочность:</strong>{' '}
+                <Tag color={isOverdue(selectedItem.created_at, selectedItem.urgency_days) ? 'red' : 'orange'}>
+                  {selectedItem.urgency_name}
+                  {isOverdue(selectedItem.created_at, selectedItem.urgency_days) ? ' — просрочено' : ''}
+                </Tag>
+              </p>
+            )}
             <p>
               <strong>Статус: </strong>
               <Select

@@ -1,4 +1,4 @@
-import { Button, List, Modal, Select, Space, Tag, Typography, message } from 'antd';
+import { Button, List, Modal, Select, Space, Tag, Tooltip, Typography, message } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { formatDateTime } from '../Core/date.utils';
@@ -29,6 +29,19 @@ const STATUS_OPTIONS = (Object.keys(STATUS_LABELS) as AhchRequestStatus[]).map((
 
 function StatusTag({ status }: { status: string }) {
   return <Tag color={STATUS_COLORS[status] ?? 'default'}>{STATUS_LABELS[status] ?? status}</Tag>;
+}
+
+function getOverdueDays(createdAt: string, urgencyDays: number | null | undefined): number {
+  if (!urgencyDays) return 0;
+  const deadline = new Date(createdAt);
+  deadline.setDate(deadline.getDate() + urgencyDays);
+  const diffMs = Date.now() - deadline.getTime();
+  if (diffMs <= 0) return 0;
+  return Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+}
+
+function isOverdue(createdAt: string, urgencyDays: number | null | undefined): boolean {
+  return getOverdueDays(createdAt, urgencyDays) > 0;
 }
 
 export function AdminAhchRequestsPage() {
@@ -102,22 +115,37 @@ export function AdminAhchRequestsPage() {
         loading={loading}
         dataSource={filteredItems}
         locale={{ emptyText: 'Пока нет заявок в АХЧ' }}
-        renderItem={(item) => (
-          <List.Item className="admin-ahch-requests-page__item" onClick={() => setSelectedItem(item)}>
-            <div className="admin-ahch-requests-page__main">
-              <div className="admin-ahch-requests-page__title">#{item.id} — {item.address}</div>
-              <div className="admin-ahch-requests-page__meta">
-                <span>{item.department}</span>
-                <span>Тел.: {item.employee_phone}</span>
-                <span>{formatDateTime(item.created_at)}</span>
+        renderItem={(item) => {
+          const overdueDays = getOverdueDays(item.created_at, item.urgency_days);
+          const overdue = overdueDays > 0;
+          return (
+            <List.Item
+              className={`admin-ahch-requests-page__item${overdue ? ' admin-ahch-requests-page__item--overdue' : ''}`}
+              onClick={() => setSelectedItem(item)}
+            >
+              <div className="admin-ahch-requests-page__main">
+                <div className="admin-ahch-requests-page__title">#{item.id} — {item.address}</div>
+                <div className="admin-ahch-requests-page__meta">
+                  <span>{item.department}</span>
+                  <span>Тел.: {item.employee_phone}</span>
+                  <span>{formatDateTime(item.created_at)}</span>
+                  {item.urgency_name && (
+                    <Tooltip title={overdue ? 'Срок исполнения истёк' : undefined}>
+                      <Tag color={overdue ? 'red' : 'orange'}>
+                        {item.urgency_name}
+                        {overdue ? ` — Просрочено (на ${overdueDays} дн.)` : ''}
+                      </Tag>
+                    </Tooltip>
+                  )}
+                </div>
+                <Typography.Paragraph ellipsis={{ rows: 2 }} className="admin-ahch-requests-page__text">
+                  {item.request_text}
+                </Typography.Paragraph>
               </div>
-              <Typography.Paragraph ellipsis={{ rows: 2 }} className="admin-ahch-requests-page__text">
-                {item.request_text}
-              </Typography.Paragraph>
-            </div>
-            <StatusTag status={item.status} />
-          </List.Item>
-        )}
+              <StatusTag status={item.status} />
+            </List.Item>
+          );
+        }}
       />
 
       <Modal
@@ -132,6 +160,17 @@ export function AdminAhchRequestsPage() {
             <p><strong>Адрес:</strong> {selectedItem.address}</p>
             <p><strong>Отделение:</strong> {selectedItem.department}</p>
             <p><strong>Телефон сотрудника:</strong> {selectedItem.employee_phone}</p>
+            {selectedItem.urgency_name && (
+              <p>
+                <strong>Срочность:</strong>{' '}
+                <Tag color={isOverdue(selectedItem.created_at, selectedItem.urgency_days) ? 'red' : 'orange'}>
+                  {selectedItem.urgency_name}
+                  {getOverdueDays(selectedItem.created_at, selectedItem.urgency_days) > 0
+                    ? ` — Просрочено (на ${getOverdueDays(selectedItem.created_at, selectedItem.urgency_days)} дн.)`
+                    : ''}
+                </Tag>
+              </p>
+            )}
             <p><strong>Статус:</strong> <StatusTag status={selectedItem.status} /></p>
             <p><strong>Создано:</strong> {formatDateTime(selectedItem.created_at)}</p>
             <p><strong>Описание:</strong></p>

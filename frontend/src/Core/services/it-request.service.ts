@@ -10,6 +10,7 @@ export type CreateItRequestPayload = {
   location: string;
   request_text: string;
   remote_access_id?: string;
+  urgency_id?: number;
 };
 
 export type CreateItRequestResponse = {

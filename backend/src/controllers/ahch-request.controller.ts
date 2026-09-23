@@ -18,6 +18,7 @@ type CreateAhchRequestBody = {
   department: string;
   request_text: string;
   employee_phone: string;
+  urgency_id?: number;
 };
 
 export async function createAhchRequest(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -27,6 +28,7 @@ export async function createAhchRequest(req: Request, res: Response, next: NextF
     const department = body.department?.trim();
     const requestText = body.request_text?.trim();
     const employeePhone = body.employee_phone?.trim();
+    const urgencyId = body.urgency_id ? Number(body.urgency_id) : null;
 
     if (!address || !department || !requestText || !employeePhone) {
       res.status(400).json({ message: 'Missing required fields' });
@@ -35,18 +37,25 @@ export async function createAhchRequest(req: Request, res: Response, next: NextF
 
     const result = await withDbClient((client) =>
       client.query(
-        `INSERT INTO ahch_requests (address, department, request_text, employee_phone)
-         VALUES ($1, $2, $3, $4)
-         RETURNING id, status, created_at`,
-        [address, department, requestText, employeePhone],
+        `WITH ins AS (
+           INSERT INTO ahch_requests (address, department, request_text, employee_phone, urgency_id)
+           VALUES ($1, $2, $3, $4, $5)
+           RETURNING id, status, created_at, urgency_id
+         )
+         SELECT ins.id, ins.status, ins.created_at, ul.name AS urgency_name
+         FROM ins
+         LEFT JOIN urgency_levels ul ON ul.id = ins.urgency_id`,
+        [address, department, requestText, employeePhone, urgencyId],
       ),
     );
 
-    const created = result.rows[0] as { id: number; status: string; created_at: string };
+    const created = result.rows[0] as { id: number; status: string; created_at: string; urgency_name: string | null };
+
+    const urgencyLine = created.urgency_name ? `\nСрочность: ${created.urgency_name}` : '';
 
     void notifyRoleUsers(
       'facility',
-      `Новая заявка в АХЧ #${created.id}\nАдрес: ${address}\nОтделение: ${department}\nТелефон: ${employeePhone}\nОписание: ${requestText.slice(0, 200)}`,
+      `Новая заявка в АХЧ #${created.id}\nАдрес: ${address}\nОтделение: ${department}\nТелефон: ${employeePhone}${urgencyLine}\nОписание: ${requestText.slice(0, 200)}`,
     );
 
     res.status(201).json(created);
@@ -59,9 +68,12 @@ export async function getAhchRequests(_req: Request, res: Response, next: NextFu
   try {
     const result = await withDbClient((client) =>
       client.query(
-        `SELECT id, address, department, request_text, employee_phone, status, comment, created_at
-         FROM ahch_requests
-         ORDER BY created_at DESC`,
+        `SELECT r.id, r.address, r.department, r.request_text, r.employee_phone,
+                r.status, r.comment, r.created_at,
+                ul.name AS urgency_name, ul.days AS urgency_days
+         FROM ahch_requests r
+         LEFT JOIN urgency_levels ul ON ul.id = r.urgency_id
+         ORDER BY r.created_at DESC`,
       ),
     );
 
@@ -83,7 +95,13 @@ export async function updateAhchRequestStatus(req: Request, res: Response, next:
 
     const result = await withDbClient((client) =>
       client.query(
-        `UPDATE ahch_requests SET status = $1 WHERE id = $2 RETURNING id, status, department, address, employee_phone, request_text`,
+        `WITH upd AS (
+           UPDATE ahch_requests SET status = $1 WHERE id = $2
+           RETURNING id, status, department, address, employee_phone, request_text, urgency_id
+         )
+         SELECT upd.*, ul.name AS urgency_name
+         FROM upd
+         LEFT JOIN urgency_levels ul ON ul.id = upd.urgency_id`,
         [status, id],
       ),
     );
@@ -100,14 +118,17 @@ export async function updateAhchRequestStatus(req: Request, res: Response, next:
       address: string;
       employee_phone: string;
       request_text: string;
+      urgency_name: string | null;
     };
+
+    const urgencyLine = updated.urgency_name ? `\nСрочность: ${updated.urgency_name}` : '';
 
     void notifyRoleUsers(
       'facility',
       `Статус заявки в АХЧ #${updated.id} изменён на «${STATUS_LABELS_RU[status]}»\n` +
       `Отделение: ${updated.department}\n` +
       `Адрес: ${updated.address}\n` +
-      `Телефон: ${updated.employee_phone}\n` +
+      `Телефон: ${updated.employee_phone}${urgencyLine}\n` +
       `Описание: ${updated.request_text.slice(0, 200)}`,
     );
 

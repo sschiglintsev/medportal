@@ -33,6 +33,12 @@
   padding: 12px 14px !important;
   margin-bottom: 10px;
   background: #ffffff;
+  transition: background-color 0.2s;
+
+  &--overdue {
+    background: rgba(220, 38, 38, 0.05);
+    border-color: rgba(220, 38, 38, 0.2);
+  }
 }
 
 .facility-cabinet-page__main {

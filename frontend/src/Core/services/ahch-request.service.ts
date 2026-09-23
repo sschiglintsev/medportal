@@ -6,6 +6,7 @@ export type CreateAhchRequestPayload = {
   department: string;
   request_text: string;
   employee_phone: string;
+  urgency_id?: number;
 };
 
 export type CreateAhchRequestResponse = {

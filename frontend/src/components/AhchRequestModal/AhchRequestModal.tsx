@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react';
 
 import { createAhchRequest } from '../../Core/services/ahch-request.service';
 import { fetchDepartments } from '../../Core/services/incident.service';
-import type { Department } from '../../Core/types/common';
+import { fetchUrgencyLevels } from '../../Core/services/urgency.service';
+import type { Department, UrgencyLevel } from '../../Core/types/common';
 import './AhchRequestModal.scss';
 
 type AhchRequestModalProps = {
@@ -16,6 +17,7 @@ type AhchRequestFormValues = {
   department: string;
   request_text: string;
   employee_phone: string;
+  urgency_id?: number;
 };
 
 const formatPhoneMask = (value: string): string => {
@@ -51,6 +53,7 @@ export function AhchRequestModal({ open, onClose }: AhchRequestModalProps) {
   const [form] = Form.useForm<AhchRequestFormValues>();
   const [submitting, setSubmitting] = useState(false);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [urgencyLevels, setUrgencyLevels] = useState<UrgencyLevel[]>([]);
   const [createdRequestId, setCreatedRequestId] = useState<number | null>(null);
 
   useEffect(() => {
@@ -60,16 +63,22 @@ export function AhchRequestModal({ open, onClose }: AhchRequestModalProps) {
       return;
     }
 
-    const loadDepartments = async () => {
+    const loadData = async () => {
       try {
-        const data = await fetchDepartments();
-        setDepartments(data);
+        const [deps, urgencies] = await Promise.all([fetchDepartments(), fetchUrgencyLevels()]);
+        setDepartments(deps);
+        setUrgencyLevels(urgencies);
+        // Дефолт — «Неделя»
+        const weekLevel = urgencies.find((u) => u.days === 7);
+        if (weekLevel) {
+          form.setFieldValue('urgency_id', weekLevel.id);
+        }
       } catch {
-        message.error('Не удалось загрузить отделения');
+        message.error('Не удалось загрузить данные формы');
       }
     };
 
-    void loadDepartments();
+    void loadData();
   }, [form, open]);
 
   const handleModalClose = () => {
@@ -146,6 +155,13 @@ export function AhchRequestModal({ open, onClose }: AhchRequestModalProps) {
             getValueFromEvent={(event) => formatPhoneMask(event.target.value)}
           >
             <Input placeholder="+7(___)___-__-__" />
+          </Form.Item>
+          <Form.Item name="urgency_id" label="Срочность">
+            <Select
+              options={urgencyLevels.map((u) => ({ value: u.id, label: u.name }))}
+              placeholder="Выберите срочность"
+              allowClear
+            />
           </Form.Item>
 
           <Button type="primary" htmlType="submit" loading={submitting}>

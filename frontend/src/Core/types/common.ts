@@ -50,6 +50,12 @@ export type PortalDocument = {
   updated_at: string;
 };
 
+export type UrgencyLevel = {
+  id: number;
+  name: string;
+  days: number;
+};
+
 export type ItRequest = {
   id: number;
   full_name: string;
@@ -61,6 +67,8 @@ export type ItRequest = {
   status: string;
   comment: string | null;
   created_at: string;
+  urgency_name: string | null;
+  urgency_days: number | null;
 };
 
 export type MetrologistRequest = {
@@ -84,6 +92,8 @@ export type AhchRequest = {
   status: string;
   comment: string | null;
   created_at: string;
+  urgency_name: string | null;
+  urgency_days: number | null;
 };
 
 export type Incident = {
