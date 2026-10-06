@@ -1,4 +1,4 @@
-import { BellOutlined, ExperimentOutlined } from '@ant-design/icons';
+import { BellOutlined, CalendarOutlined, ExperimentOutlined } from '@ant-design/icons';
 import { Button, Input, List, Menu, Modal, Select, Space, Tag, Typography, message } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -12,6 +12,7 @@ import {
 import type { MetrologistRequestStatus } from '../Core/services/metrologist-request.service';
 import { useAppStore } from '../Core/store/app.store';
 import type { MetrologistRequest } from '../Core/types/common';
+import { CalibrationSchedulePage } from './CalibrationSchedulePage';
 import './MetrologistCabinetPage.scss';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -37,7 +38,7 @@ const STATUS_OPTIONS = (Object.keys(STATUS_LABELS) as MetrologistRequestStatus[]
   label: STATUS_LABELS[key],
 }));
 
-type Section = 'metrologist-requests' | 'notifications';
+type Section = 'metrologist-requests' | 'calibration-schedule' | 'notifications';
 
 export function MetrologistCabinetPage() {
   const token = useAppStore((state) => state.token);
@@ -135,6 +136,7 @@ export function MetrologistCabinetPage() {
             onClick={({ key }) => setActiveSection(key as Section)}
             items={[
               { key: 'metrologist-requests', icon: <ExperimentOutlined />, label: 'Заявки метрологу' },
+              { key: 'calibration-schedule', icon: <CalendarOutlined />, label: 'График поверок МКС и ПИ' },
               { key: 'notifications', icon: <BellOutlined />, label: 'Уведомления Max' },
             ]}
           />
@@ -147,6 +149,13 @@ export function MetrologistCabinetPage() {
                 Уведомления Max
               </Typography.Title>
               <MaxLinkCard />
+            </>
+          ) : activeSection === 'calibration-schedule' ? (
+            <>
+              <Typography.Title level={4} className="metrologist-cabinet-page__title">
+                График поверок МКС и ПИ
+              </Typography.Title>
+              <CalibrationSchedulePage compact />
             </>
           ) : (
           <>

@@ -1,6 +1,7 @@
 import {
   ApartmentOutlined,
   BarChartOutlined,
+  CalendarOutlined,
   CarOutlined,
   ExperimentOutlined,
   FileTextOutlined,
@@ -26,6 +27,7 @@ import { AdminItRequestsPage } from './AdminItRequestsPage';
 import { AdminMetrologistRequestsPage } from './AdminMetrologistRequestsPage';
 import { AdminTransportRequestsPage } from './AdminTransportRequestsPage';
 import { AdminVehiclesPage } from './AdminVehiclesPage';
+import { CalibrationSchedulePage } from './CalibrationSchedulePage';
 import { AdminOrganizationPage } from './AdminOrganizationPage';
 import { AdminUsersPage } from './AdminUsersPage';
 import { AnalyticsPage } from './AnalyticsPage';
@@ -42,6 +44,7 @@ type Section =
   | 'ahch-requests'
   | 'transport-requests'
   | 'vehicles'
+  | 'calibration-schedule'
   | 'incidents'
   | 'users'
   | 'organization'
@@ -58,6 +61,7 @@ const SECTION_TITLES: Record<Section, string> = {
   'ahch-requests': 'Заявки в АХЧ',
   'transport-requests': 'Транспортные заявки',
   vehicles: 'Автомобили',
+  'calibration-schedule': 'График поверок МКС и ПИ',
   incidents: 'Нежелательные события',
   users: 'Пользователи',
   organization: 'Профиль организации',
@@ -79,6 +83,8 @@ export function AdminCabinetPage() {
         return <AdminTransportRequestsPage />;
       case 'vehicles':
         return <AdminVehiclesPage />;
+      case 'calibration-schedule':
+        return <CalibrationSchedulePage />;
       case 'documents':
         return <AdminDocumentsPage />;
       case 'announcements':
@@ -119,6 +125,7 @@ export function AdminCabinetPage() {
               { key: 'ahch-requests', icon: <HomeOutlined />, label: 'Заявки в АХЧ' },
               { key: 'transport-requests', icon: <CarOutlined />, label: 'Транспортные заявки' },
               { key: 'vehicles', icon: <CarOutlined />, label: 'Автомобили' },
+              { key: 'calibration-schedule', icon: <CalendarOutlined />, label: 'График поверок МКС и ПИ' },
               { key: 'incidents', icon: <UnorderedListOutlined />, label: 'Нежелательные события' },
               { key: 'analytics', icon: <BarChartOutlined />, label: 'Аналитика' },
               { type: 'divider' },

@@ -58,11 +58,52 @@
   font-weight: 600;
 }
 
+.docs-page__tabs {
+  .ant-tabs-nav {
+    margin-bottom: 20px;
+  }
+
+  .ant-tabs-tab {
+    font-size: 15px;
+    font-weight: 600;
+  }
+}
+
 .docs-page__heading {
   font-size: 28px;
   font-weight: 700;
   color: $color-text;
   margin: 0 0 28px;
+}
+
+.docs-page__schedule-toolbar {
+  margin-bottom: 16px;
+}
+
+.docs-page__schedule-table {
+  .ant-table {
+    font-size: 11px;
+  }
+
+  .ant-table-thead > tr > th,
+  .ant-table-tbody > tr > td {
+    padding: 6px 5px;
+    white-space: normal;
+    line-height: 1.25;
+    vertical-align: top;
+  }
+
+  .ant-table-thead > tr > th {
+    font-size: 11px;
+    font-weight: 600;
+    overflow-wrap: break-word;
+    word-break: normal;
+  }
+
+  .ant-table-tbody > tr > td {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
 }
 
 .docs-page__spinner {

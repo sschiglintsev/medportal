@@ -71,6 +71,25 @@ export type ItRequest = {
   urgency_days: number | null;
 };
 
+export type CalibrationScheduleItem = {
+  id: number;
+  commissioning_date: string | null;
+  nomenclature: string;
+  name: string | null;
+  type: string | null;
+  inventory_number: string | null;
+  serial_number: string | null;
+  manufacture_date: string | null;
+  department_id: number | null;
+  department_name: string | null;
+  quantity: number | null;
+  verification_kind: string | null;
+  current_verification_date: string | null;
+  next_verification_date: string | null;
+  note: string | null;
+  created_at: string;
+};
+
 export type MetrologistRequest = {
   id: number;
   full_name: string;

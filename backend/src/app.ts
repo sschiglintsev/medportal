@@ -19,6 +19,7 @@ import { userRouter } from './routes/user.routes';
 import { vehicleRouter } from './routes/vehicle.routes';
 import { analyticsRouter } from './routes/analytics.routes';
 import { urgencyRouter } from './routes/urgency.routes';
+import { calibrationScheduleRouter } from './routes/calibration-schedule.routes';
 import { errorHandler } from './middlewares/error.middleware';
 
 const app = express();
@@ -47,7 +48,7 @@ app.use(
     credentials: true,
   }),
 );
-app.use(express.json());
+app.use(express.json({ limit: '5mb' }));
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 app.get('/api', (_req, res) => {
@@ -70,6 +71,7 @@ app.use('/api', transportRequestRouter);
 app.use('/api', vehicleRouter);
 app.use('/api', analyticsRouter);
 app.use('/api', urgencyRouter);
+app.use('/api', calibrationScheduleRouter);
 
 app.use(errorHandler);
 
