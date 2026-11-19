@@ -12,6 +12,11 @@ export type RolePermissions = {
   canViewIncidents: boolean;
   canViewItRequests: boolean;
   canManageItRequests: boolean;
+  // Новые разрешения (добавлены миграцией 025)
+  canManageEmployees: boolean;
+  canManageOwnJournals: boolean;
+  canManageAllJournals: boolean;
+  canManageJournalAccess: boolean;
 };
 
 type RoleRow = {
@@ -27,6 +32,10 @@ type RoleRow = {
   can_view_incidents: boolean;
   can_view_it_requests: boolean;
   can_manage_it_requests: boolean;
+  can_manage_employees: boolean;
+  can_manage_own_journals: boolean;
+  can_manage_all_journals: boolean;
+  can_manage_journal_access: boolean;
   is_active: boolean;
 };
 
@@ -43,6 +52,11 @@ function mapRolePermissions(row: RoleRow): RolePermissions {
     canViewIncidents: row.can_view_incidents,
     canViewItRequests: row.can_view_it_requests,
     canManageItRequests: row.can_manage_it_requests,
+    // Новые разрешения из миграции 025; если колонок ещё нет — false по умолчанию
+    canManageEmployees: row.can_manage_employees ?? false,
+    canManageOwnJournals: row.can_manage_own_journals ?? false,
+    canManageAllJournals: row.can_manage_all_journals ?? false,
+    canManageJournalAccess: row.can_manage_journal_access ?? false,
   };
 }
 
@@ -71,6 +85,12 @@ async function ensureRolesSchema(client: PoolClient): Promise<void> {
   await client.query(`ALTER TABLE roles ADD COLUMN IF NOT EXISTS value VARCHAR(100) NOT NULL DEFAULT ''`);
   await client.query(`ALTER TABLE roles ADD COLUMN IF NOT EXISTS can_access_cabinet_chief BOOLEAN NOT NULL DEFAULT FALSE`);
   await client.query(`ALTER TABLE roles ADD COLUMN IF NOT EXISTS can_manage_it_requests BOOLEAN NOT NULL DEFAULT FALSE`);
+
+  // Колонки из миграции 025 — добавляем если ещё нет (для установок без SQL-миграций)
+  await client.query(`ALTER TABLE roles ADD COLUMN IF NOT EXISTS can_manage_employees BOOLEAN NOT NULL DEFAULT FALSE`);
+  await client.query(`ALTER TABLE roles ADD COLUMN IF NOT EXISTS can_manage_own_journals BOOLEAN NOT NULL DEFAULT FALSE`);
+  await client.query(`ALTER TABLE roles ADD COLUMN IF NOT EXISTS can_manage_all_journals BOOLEAN NOT NULL DEFAULT FALSE`);
+  await client.query(`ALTER TABLE roles ADD COLUMN IF NOT EXISTS can_manage_journal_access BOOLEAN NOT NULL DEFAULT FALSE`);
 
   // Если старая колонка name существует — убираем NOT NULL чтобы новые вставки не падали
   await client.query(`
@@ -145,6 +165,11 @@ async function ensureRolesSchema(client: PoolClient): Promise<void> {
 }
 
 async function upsertRoles(client: PoolClient): Promise<void> {
+  // ВАЖНО: новые разрешения (can_manage_employees, can_manage_own_journals,
+  // can_manage_all_journals, can_manage_journal_access) НЕ включены
+  // в ON CONFLICT DO UPDATE SET — их устанавливает миграция 025 и они
+  // не должны сбрасываться при каждом перезапуске сервера.
+  // Для новой установки INSERT задаёт корректные начальные значения.
   await client.query(`
     INSERT INTO roles (
       title,
@@ -171,19 +196,63 @@ async function upsertRoles(client: PoolClient): Promise<void> {
       ('Отдел качества',               'quality_department',TRUE,  FALSE, TRUE,  FALSE, TRUE,  FALSE, TRUE,  FALSE, FALSE),
       ('Планово-экономический отдел',  'planning_department',FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE),
       ('Профсоюз',                     'trade_union',       FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE),
-      ('Сотрудник',                    'employee',          FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE),
+      ('Сотрудник',                    'employee',          TRUE,  FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE),
       ('Эпидемиолог',                  'epidemiologist',    FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE)
     ON CONFLICT (value) DO UPDATE SET
-      title                  = EXCLUDED.title,
-      can_access_cabinet     = EXCLUDED.can_access_cabinet,
+      title                        = EXCLUDED.title,
+      can_access_cabinet           = EXCLUDED.can_access_cabinet,
       can_access_admin_cabinet     = EXCLUDED.can_access_admin_cabinet,
       can_access_quality_cabinet   = EXCLUDED.can_access_quality_cabinet,
       can_access_cabinet_chief     = EXCLUDED.can_access_cabinet_chief,
-      can_manage_references  = EXCLUDED.can_manage_references,
-      can_manage_documents   = EXCLUDED.can_manage_documents,
-      can_view_incidents     = EXCLUDED.can_view_incidents,
-      can_view_it_requests   = EXCLUDED.can_view_it_requests,
-      can_manage_it_requests = EXCLUDED.can_manage_it_requests
+      can_manage_references        = EXCLUDED.can_manage_references,
+      can_manage_documents         = EXCLUDED.can_manage_documents,
+      can_view_incidents           = EXCLUDED.can_view_incidents,
+      can_view_it_requests         = EXCLUDED.can_view_it_requests,
+      can_manage_it_requests       = EXCLUDED.can_manage_it_requests
+      -- can_manage_employees, can_manage_own_journals, can_manage_all_journals,
+      -- can_manage_journal_access — НЕ обновляются здесь (см. миграцию 025)
+  `);
+
+  // head_nurse создаётся миграцией 025, но если её нет — создаём здесь
+  // без ON CONFLICT UPDATE (не затираем права, установленные миграцией)
+  await client.query(`
+    INSERT INTO roles (
+      title, value,
+      can_access_cabinet, can_access_admin_cabinet, can_access_quality_cabinet, can_access_cabinet_chief,
+      can_manage_references, can_manage_documents, can_view_incidents, can_view_it_requests, can_manage_it_requests
+    )
+    VALUES ('Главная медсестра', 'head_nurse', TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE)
+    ON CONFLICT (value) DO NOTHING
+  `);
+
+  // ── Эквивалент миграции 025: выставляем права для ролей ──────────────────
+  // Используем DO UPDATE WHERE ... чтобы не затирать уже правильно выставленные значения,
+  // но гарантировать, что после первого запуска права корректны.
+  await client.query(`
+    UPDATE roles
+    SET
+      can_manage_employees    = TRUE,
+      can_manage_all_journals = TRUE,
+      can_manage_journal_access = TRUE
+    WHERE value = 'administrator'
+      AND (can_manage_employees = FALSE OR can_manage_all_journals = FALSE OR can_manage_journal_access = FALSE)
+  `);
+
+  await client.query(`
+    UPDATE roles
+    SET
+      can_manage_own_journals   = TRUE,
+      can_manage_journal_access = TRUE
+    WHERE value = 'head_nurse'
+      AND (can_manage_own_journals = FALSE OR can_manage_journal_access = FALSE)
+  `);
+
+  // Кабинет сотрудника готов — включаем доступ (ранее был отложен до деплоя frontend)
+  await client.query(`
+    UPDATE roles
+    SET can_access_cabinet = TRUE
+    WHERE value = 'employee'
+      AND can_access_cabinet = FALSE
   `);
 }
 
@@ -242,6 +311,13 @@ async function migrateUsersTable(client: PoolClient): Promise<void> {
     )
   `);
 
+  // Колонки из миграции 024 — добавляем если ещё нет (auth-расширения)
+  await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE`);
+  await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_version INTEGER NOT NULL DEFAULT 0`);
+  await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT FALSE`);
+  await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS temporary_password_expires_at TIMESTAMPTZ`);
+  await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_changed_at TIMESTAMPTZ`);
+
   // Поля для привязки Max
   await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS max_chat_id VARCHAR(50)`);
   await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS max_username VARCHAR(255)`);
@@ -268,6 +344,222 @@ async function ensureUsersTable(client: PoolClient): Promise<void> {
   `);
 }
 
+async function ensureEmployeeTables(client: PoolClient): Promise<void> {
+  // ── Миграция 026: кадровый модуль ────────────────────────────────────────
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS employee_profiles (
+      user_id         INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE RESTRICT,
+      employee_code   VARCHAR(50) NOT NULL UNIQUE,
+      version         INTEGER NOT NULL DEFAULT 1,
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await client.query(`CREATE SEQUENCE IF NOT EXISTS employee_code_seq START 1`);
+
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS employee_departments (
+      id            SERIAL PRIMARY KEY,
+      user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+      department_id INTEGER NOT NULL REFERENCES departments(id) ON DELETE RESTRICT,
+      position      VARCHAR(255) NOT NULL,
+      is_active     BOOLEAN NOT NULL DEFAULT TRUE,
+      version       INTEGER NOT NULL DEFAULT 1,
+      created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      CONSTRAINT uq_employee_department UNIQUE (user_id, department_id)
+    )
+  `);
+
+  await client.query(`CREATE INDEX IF NOT EXISTS idx_employee_departments_user_id ON employee_departments (user_id)`);
+  await client.query(`CREATE INDEX IF NOT EXISTS idx_employee_departments_dept_id ON employee_departments (department_id)`);
+  await client.query(`CREATE INDEX IF NOT EXISTS idx_employee_departments_active  ON employee_departments (department_id, user_id) WHERE is_active = TRUE`);
+
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS journal_department_settings (
+      department_id   INTEGER PRIMARY KEY REFERENCES departments(id) ON DELETE RESTRICT,
+      access_version  INTEGER NOT NULL DEFAULT 1,
+      updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS department_journal_access (
+      id            SERIAL PRIMARY KEY,
+      department_id INTEGER NOT NULL REFERENCES departments(id) ON DELETE RESTRICT,
+      user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+      is_active     BOOLEAN NOT NULL DEFAULT TRUE,
+      granted_by    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      granted_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      revoked_by    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      revoked_at    TIMESTAMPTZ,
+      CONSTRAINT uq_dept_journal_access UNIQUE (department_id, user_id)
+    )
+  `);
+
+  await client.query(`CREATE INDEX IF NOT EXISTS idx_dept_journal_access_dept_user ON department_journal_access (department_id, user_id) WHERE is_active = TRUE`);
+  await client.query(`CREATE INDEX IF NOT EXISTS idx_dept_journal_access_user     ON department_journal_access (user_id) WHERE is_active = TRUE`);
+
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS employee_import_batches (
+      id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      created_by       INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+      status           VARCHAR(20) NOT NULL DEFAULT 'preview'
+                       CHECK (status IN ('preview', 'committed', 'expired')),
+      preview_version  INTEGER NOT NULL DEFAULT 1,
+      expires_at       TIMESTAMPTZ NOT NULL,
+      idempotency_key  VARCHAR(255) UNIQUE,
+      plan_digest      VARCHAR(64),
+      summary          JSONB,
+      rows_data        JSONB,
+      created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await client.query(`CREATE INDEX IF NOT EXISTS idx_employee_import_batches_owner ON employee_import_batches (created_by, expires_at)`);
+
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS idempotency_keys (
+      id              BIGSERIAL PRIMARY KEY,
+      actor_user_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      operation       VARCHAR(100) NOT NULL,
+      key             VARCHAR(255) NOT NULL,
+      payload_digest  VARCHAR(64),
+      result_id       VARCHAR(255),
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      CONSTRAINT uq_idempotency UNIQUE (actor_user_id, operation, key)
+    )
+  `);
+
+  await client.query(`CREATE INDEX IF NOT EXISTS idx_idempotency_cleanup ON idempotency_keys (created_at)`);
+}
+
+async function ensureJournalTables(client: PoolClient): Promise<void> {
+  // ── Миграция 027: модуль журналов ─────────────────────────────────────────
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS journals (
+      id                 SERIAL PRIMARY KEY,
+      title              VARCHAR(255) NOT NULL,
+      department_id      INTEGER NOT NULL REFERENCES departments(id) ON DELETE RESTRICT,
+      owner_user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+      status             VARCHAR(20) NOT NULL DEFAULT 'draft'
+                         CHECK (status IN ('draft', 'published', 'archived')),
+      version            INTEGER NOT NULL DEFAULT 1,
+      schema_version     INTEGER NOT NULL DEFAULT 1,
+      first_published_at TIMESTAMPTZ,
+      created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      archived_at        TIMESTAMPTZ
+    )
+  `);
+
+  await client.query(`CREATE INDEX IF NOT EXISTS idx_journals_owner       ON journals (owner_user_id)`);
+  await client.query(`CREATE INDEX IF NOT EXISTS idx_journals_dept_status ON journals (department_id, status)`);
+
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS journal_columns (
+      id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      journal_id  INTEGER NOT NULL REFERENCES journals(id) ON DELETE CASCADE,
+      title       VARCHAR(255) NOT NULL,
+      type        VARCHAR(20) NOT NULL CHECK (type IN ('text', 'date', 'confirmation')),
+      sort_order  INTEGER NOT NULL DEFAULT 0
+    )
+  `);
+
+  await client.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS uq_journal_one_confirmation
+      ON journal_columns (journal_id) WHERE type = 'confirmation'
+  `);
+  await client.query(`CREATE INDEX IF NOT EXISTS idx_journal_columns_journal ON journal_columns (journal_id, sort_order)`);
+
+  // Миграция: флаг «разрешено заполнять медсестре при подтверждении»
+  await client.query(`
+    ALTER TABLE journal_columns
+      ADD COLUMN IF NOT EXISTS is_editable_by_employee BOOLEAN NOT NULL DEFAULT TRUE
+  `);
+
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS journal_rows (
+      id               SERIAL PRIMARY KEY,
+      journal_id       INTEGER NOT NULL REFERENCES journals(id) ON DELETE RESTRICT,
+      sort_order       INTEGER NOT NULL DEFAULT 0,
+      current_revision INTEGER NOT NULL DEFAULT 1,
+      deleted_at       TIMESTAMPTZ,
+      deleted_by       INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      deletion_reason  TEXT,
+      created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await client.query(`CREATE INDEX IF NOT EXISTS idx_journal_rows_journal_order ON journal_rows (journal_id, sort_order) WHERE deleted_at IS NULL`);
+
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS journal_row_revisions (
+      row_id          INTEGER NOT NULL REFERENCES journal_rows(id) ON DELETE RESTRICT,
+      revision        INTEGER NOT NULL,
+      values          JSONB NOT NULL DEFAULT '{}',
+      schema_snapshot JSONB NOT NULL DEFAULT '{}',
+      created_by      INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      change_reason   TEXT,
+      PRIMARY KEY (row_id, revision)
+    )
+  `);
+
+  await client.query(`CREATE INDEX IF NOT EXISTS idx_journal_row_revisions_row ON journal_row_revisions (row_id, revision)`);
+
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS journal_row_confirmations (
+      id               BIGSERIAL PRIMARY KEY,
+      row_id           INTEGER NOT NULL REFERENCES journal_rows(id) ON DELETE RESTRICT,
+      row_revision     INTEGER NOT NULL,
+      signer_user_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+      signer_full_name VARCHAR(255) NOT NULL,
+      signer_position  VARCHAR(255),
+      department_name  VARCHAR(255) NOT NULL,
+      journal_title    VARCHAR(255) NOT NULL,
+      confirmed_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      method           VARCHAR(50) NOT NULL DEFAULT 'password_confirmation',
+      status           VARCHAR(20) NOT NULL DEFAULT 'active'
+                       CHECK (status IN ('active', 'voided')),
+      voided_at        TIMESTAMPTZ,
+      voided_by        INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      void_reason      TEXT,
+      idempotency_key  VARCHAR(255) UNIQUE,
+      CONSTRAINT fk_confirmation_revision
+        FOREIGN KEY (row_id, row_revision) REFERENCES journal_row_revisions (row_id, revision)
+    )
+  `);
+
+  await client.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS uq_one_active_confirmation_per_row
+      ON journal_row_confirmations (row_id) WHERE status = 'active'
+  `);
+  await client.query(`CREATE INDEX IF NOT EXISTS idx_confirmations_row    ON journal_row_confirmations (row_id, status)`);
+  await client.query(`CREATE INDEX IF NOT EXISTS idx_confirmations_signer ON journal_row_confirmations (signer_user_id)`);
+
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS journal_audit_events (
+      id          BIGSERIAL PRIMARY KEY,
+      object_type VARCHAR(50) NOT NULL,
+      object_id   VARCHAR(100) NOT NULL,
+      action      VARCHAR(50) NOT NULL,
+      actor_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      request_id  VARCHAR(100),
+      reason      TEXT,
+      prev_data   JSONB,
+      new_data    JSONB,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await client.query(`CREATE INDEX IF NOT EXISTS idx_audit_object ON journal_audit_events (object_type, object_id, created_at)`);
+  await client.query(`CREATE INDEX IF NOT EXISTS idx_audit_actor  ON journal_audit_events (actor_id, created_at)`);
+}
+
 export async function ensureAuthTables(): Promise<void> {
   if (rolesTableReady) {
     return;
@@ -279,6 +571,8 @@ export async function ensureAuthTables(): Promise<void> {
     await ensureUsersTable(client);
     await migrateUsersRoleToValue(client);
     await migrateUsersTable(client);
+    await ensureEmployeeTables(client);
+    await ensureJournalTables(client);
   });
 
   rolesTableReady = true;
@@ -322,6 +616,10 @@ export async function getRoleByValue(
         can_view_incidents,
         can_view_it_requests,
         can_manage_it_requests,
+        COALESCE(can_manage_employees, FALSE)      AS can_manage_employees,
+        COALESCE(can_manage_own_journals, FALSE)   AS can_manage_own_journals,
+        COALESCE(can_manage_all_journals, FALSE)   AS can_manage_all_journals,
+        COALESCE(can_manage_journal_access, FALSE) AS can_manage_journal_access,
         is_active
       FROM roles
       WHERE value = $1

@@ -7,9 +7,12 @@ import { fetchOrganization } from './Core/services/organization.service';
 import { useAppStore } from './Core/store/app.store';
 import { MainLayout } from './layouts/MainLayout';
 import { AdminCabinetPage } from './pages/AdminCabinetPage';
+import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import { ChiefCabinetPage } from './pages/ChiefCabinetPage';
 import { DispatcherCabinetPage } from './pages/DispatcherCabinetPage';
+import { EmployeeCabinetPage } from './pages/EmployeeCabinetPage';
 import { FacilityCabinetPage } from './pages/FacilityCabinetPage';
+import { HeadNurseCabinetPage } from './pages/HeadNurseCabinetPage';
 import { ItDepartmentCabinetPage } from './pages/ItDepartmentCabinetPage';
 import { MetrologistCabinetPage } from './pages/MetrologistCabinetPage';
 import { DocumentsPage } from './pages/Promo/DocumentsPage';
@@ -26,7 +29,18 @@ function App() {
       .then(setOrganization)
       .catch(() => {});
   }, [setOrganization]);
+
   const permissions = user?.permissions;
+
+  // Если пользователь вошёл, но обязан сменить пароль — показываем только этот экран.
+  // НЕ переводим любой 403 в этот сценарий — только явный флаг mustChangePassword.
+  if (user && user.mustChangePassword) {
+    return (
+      <ConfigProvider theme={{ token: { colorPrimary: '#4C4FEA' } }}>
+        <ChangePasswordPage />
+      </ConfigProvider>
+    );
+  }
 
   const cabinetContent = (() => {
     if (!permissions) {
@@ -52,6 +66,13 @@ function App() {
     }
     if (user?.role === 'dispatcher') {
       return <DispatcherCabinetPage />;
+    }
+    // Новые кабинеты (этап 5)
+    if (user?.role === 'head_nurse') {
+      return <HeadNurseCabinetPage />;
+    }
+    if (user?.role === 'employee' || permissions.canAccessCabinet) {
+      return <EmployeeCabinetPage />;
     }
     return <AdminCabinetPage />;
   })();

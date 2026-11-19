@@ -1,4 +1,10 @@
 .admin-users-page {
+  &__toolbar {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 12px;
+  }
+
   .ant-table-wrapper {
     background: #ffffff;
     border: 1px solid #e7eaf3;

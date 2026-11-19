@@ -145,6 +145,7 @@ export type User = {
   role: string;
   roleTitle: string;
   permissions: RolePermissions;
+  mustChangePassword?: boolean;
 };
 
 export type AuthResponse = {
@@ -162,6 +163,11 @@ export type RolePermissions = {
   canViewIncidents: boolean;
   canViewItRequests: boolean;
   canManageItRequests: boolean;
+  // Новые разрешения (добавлены миграцией 025)
+  canManageEmployees?: boolean;
+  canManageOwnJournals?: boolean;
+  canManageAllJournals?: boolean;
+  canManageJournalAccess?: boolean;
 };
 
 export type RoleOption = {
@@ -216,4 +222,101 @@ export type OrganizationProfile = {
   logo_url: string | null;
   hero_image_url: string | null;
   updated_at: string;
+};
+
+// ─────────────────────────────────────────────────────────────
+// Сотрудники
+// ─────────────────────────────────────────────────────────────
+
+export type EmployeeDepartmentAssignment = {
+  id: number;
+  name: string;
+  position: string;
+  is_active: boolean;
+  dept_version?: number;
+};
+
+export type EmployeeItem = {
+  id: number;
+  username: string;
+  full_name: string;
+  role: string;
+  role_title: string;
+  is_active: boolean;
+  employee_code: string | null;
+  departments: EmployeeDepartmentAssignment[];
+  created_at: string;
+  must_change_password?: boolean;
+  profile_version?: number;
+};
+
+export type EmployeeCredentials = {
+  username: string;
+  temporaryPassword: string;
+};
+
+// ─────────────────────────────────────────────────────────────
+// Журналы
+// ─────────────────────────────────────────────────────────────
+
+export type JournalColumnType = 'text' | 'date' | 'confirmation';
+
+export type JournalColumn = {
+  id: string;
+  journal_id: number;
+  title: string;
+  type: JournalColumnType;
+  sort_order: number;
+  /** Может ли сотрудник заполнять это поле при подтверждении строки */
+  is_editable_by_employee: boolean;
+};
+
+export type JournalStatus = 'draft' | 'published' | 'archived';
+
+export type Journal = {
+  id: number;
+  title: string;
+  department_id: number;
+  department_name: string;
+  owner_user_id?: number;
+  owner_name?: string;
+  status: JournalStatus;
+  version: number;
+  schema_version?: number;
+  first_published_at: string | null;
+  created_at: string;
+  updated_at: string;
+  row_count?: number;
+  columns?: JournalColumn[];
+};
+
+export type JournalRowConfirmation = {
+  id: number;
+  signer_full_name: string;
+  signer_position: string | null;
+  confirmed_at: string;
+  status: 'active' | 'voided';
+};
+
+export type JournalRow = {
+  id: number;
+  sort_order: number;
+  current_revision: number;
+  values: Record<string, string | null>;
+  created_at: string;
+  updated_at: string;
+  confirmation_id?: number;
+  signer_full_name?: string;
+  signer_position?: string;
+  confirmed_at?: string;
+  confirmation_status?: 'active' | 'voided';
+};
+
+export type DepartmentAccessEmployee = {
+  user_id: number;
+  full_name: string;
+  position: string;
+  has_access: boolean;
+  granted_at?: string;
+  revoked_at?: string;
 };

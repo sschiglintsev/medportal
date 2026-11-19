@@ -20,6 +20,61 @@ type UpdateUserBody = {
   password?: string;
 };
 
+type CreateUserBody = {
+  username: string;
+  fullName: string;
+  role: string;
+  password: string;
+};
+
+/**
+ * POST /api/users — создание пользователя администратором.
+ * В отличие от публичного /api/auth/register, разрешает любые роли
+ * (доступно только с canManageReferences).
+ */
+export async function createUser(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const body = req.body as Partial<CreateUserBody>;
+
+    if (!body.username || !body.fullName || !body.role || !body.password) {
+      res.status(400).json({ message: 'username, fullName, role и password обязательны' });
+      return;
+    }
+
+    const username = body.username.trim();
+    const fullName = body.fullName.trim();
+    const roleValue = body.role;
+    const password = body.password;
+
+    const roleMeta = await getRoleByValue(roleValue);
+    if (!roleMeta || !roleMeta.is_active) {
+      res.status(400).json({ message: 'Неверное значение роли' });
+      return;
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const result = await withDbClient((client) =>
+      client.query<UserRow>(
+        `INSERT INTO users (username, full_name, role, password_hash)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id, username, full_name, role, created_at`,
+        [username, fullName, roleValue, passwordHash],
+      ),
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (error: unknown) {
+    // Нарушение UNIQUE по username
+    const pgErr = error as { code?: string };
+    if (pgErr.code === '23505') {
+      res.status(409).json({ message: 'Пользователь с таким логином уже существует' });
+      return;
+    }
+    next(error);
+  }
+}
+
 export async function getUsers(_req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const result = await withDbClient((client) =>

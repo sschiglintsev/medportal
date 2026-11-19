@@ -20,6 +20,9 @@ import { vehicleRouter } from './routes/vehicle.routes';
 import { analyticsRouter } from './routes/analytics.routes';
 import { urgencyRouter } from './routes/urgency.routes';
 import { calibrationScheduleRouter } from './routes/calibration-schedule.routes';
+import { employeesRouter } from './routes/employees.routes';
+import { journalAccessRouter } from './routes/journal-access.routes';
+import { journalsRouter } from './routes/journals.routes';
 import { errorHandler } from './middlewares/error.middleware';
 
 const app = express();
@@ -72,6 +75,9 @@ app.use('/api', vehicleRouter);
 app.use('/api', analyticsRouter);
 app.use('/api', urgencyRouter);
 app.use('/api', calibrationScheduleRouter);
+app.use('/api', employeesRouter);
+app.use('/api', journalAccessRouter);
+app.use('/api', journalsRouter);
 
 app.use(errorHandler);
 

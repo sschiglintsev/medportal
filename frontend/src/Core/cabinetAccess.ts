@@ -10,6 +10,9 @@ export function userHasCabinetAccess(permissions: RolePermissions | undefined): 
     permissions.canAccessAdminCabinet ||
     permissions.canAccessQualityCabinet ||
     permissions.canAccessCabinetChief ||
-    permissions.canManageItRequests
+    permissions.canManageItRequests ||
+    // Новые разрешения
+    permissions.canManageOwnJournals === true ||
+    permissions.canManageAllJournals === true
   );
 }

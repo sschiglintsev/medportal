@@ -1,0 +1,27 @@
+@use '../styles/variables' as *;
+
+.employee-journals-page {
+  padding: 24px;
+
+  &__back {
+    display: flex;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+
+  &__confirm-modal {
+    ul {
+      padding-left: 20px;
+      margin-bottom: 12px;
+    }
+  }
+
+  // Таблица строк — колонки равномерно занимают ширину, текст переносится
+  .ant-table-wrapper {
+    .ant-table-cell {
+      word-break: break-word;
+      white-space: normal;
+      vertical-align: top;
+    }
+  }
+}

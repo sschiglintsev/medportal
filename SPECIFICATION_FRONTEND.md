@@ -45,7 +45,8 @@
 
 ```
 frontend/src/
-├── App.tsx                          ← Корневой компонент: выбор кабинета по роли, роутинг
+├── App.tsx                          ← Корневой компонент: выбор кабинета по роли,
+│                                       роутинг, gate смены пароля
 ├── main.tsx                         ← Точка входа: BrowserRouter, Ant Design ConfigProvider
 │
 ├── Core/
@@ -69,13 +70,18 @@ frontend/src/
 │   │   ├── analytics.service.ts
 │   │   ├── organization.service.ts
 │   │   ├── user.service.ts
+│   │   ├── employee.service.ts          ← Управление сотрудниками
+│   │   ├── journal-access.service.ts    ← Допуск к журналам
+│   │   ├── journal.service.ts           ← Журналы, строки, подтверждения
 │   │   ├── max.service.ts
 │   │   └── calibration-schedule.service.ts
 │   ├── store/
 │   │   └── app.store.ts             ← Zustand-стор
 │   ├── utils/
 │   │   ├── parseCalibrationExcel.ts ← Парсинг Excel для импорта графика поверок
-│   │   └── calibrationSchedule.view.ts ← Сортировка и фильтрация графика поверок
+│   │   ├── calibrationSchedule.view.ts ← Сортировка и фильтрация графика поверок
+│   │   ├── parseEmployeesExcel.ts   ← Парсинг Excel для импорта сотрудников
+│   │   └── exportEmployeeCredentials.ts ← Экспорт логинов и паролей в Excel
 │   ├── hooks/                       ← Кастомные React-хуки
 │   ├── cabinetAccess.ts             ← Утилита userHasCabinetAccess()
 │   └── date.utils.ts                ← formatDate, formatDateTime, formatTime
@@ -93,6 +99,12 @@ frontend/src/
 │   ├── QualityControlCabinetPage.tsx
 │   ├── ChiefCabinetPage.tsx
 │   ├── DispatcherCabinetPage.tsx
+│   ├── EmployeeCabinetPage.tsx      ← Кабинет сотрудника
+│   ├── EmployeeCabinetPage.scss
+│   ├── HeadNurseCabinetPage.tsx     ← Кабинет главной медсестры
+│   ├── HeadNurseCabinetPage.scss
+│   ├── ChangePasswordPage.tsx       ← Экран обязательной смены пароля
+│   ├── ChangePasswordPage.scss
 │   ├── CalibrationSchedulePage.tsx  ← График поверок (кабинет метролога и админа)
 │   ├── CalibrationSchedulePage.scss
 │   ├── AdminDepartmentsPage.tsx
@@ -104,10 +116,19 @@ frontend/src/
 │   ├── AdminTransportRequestsPage.tsx
 │   ├── AdminVehiclesPage.tsx
 │   ├── AdminUsersPage.tsx
+│   ├── AdminUsersPage.scss
+│   ├── AdminEmployeesPage.tsx       ← Управление сотрудниками
+│   ├── AdminEmployeesPage.scss
 │   ├── AdminOrganizationPage.tsx
 │   ├── AdminIncidentTypesPage.tsx
 │   ├── AdminReferenceIncidentTypesPage.tsx
-│   └── AnalyticsPage.tsx
+│   ├── AnalyticsPage.tsx
+│   ├── EmployeeJournalsPage.tsx     ← Просмотр и подтверждение строк журналов
+│   ├── EmployeeJournalsPage.scss
+│   ├── ManagedJournalsPage.tsx      ← Управление журналами (главная медсестра / админ)
+│   ├── ManagedJournalsPage.scss
+│   ├── DepartmentJournalAccessPage.tsx ← Настройка допуска сотрудников к журналам
+│   └── DepartmentJournalAccessPage.scss
 │
 ├── components/
 │   ├── Header/
@@ -134,11 +155,6 @@ frontend/src/
 
 **Соглашение по SCSS:** у каждого компонента/страницы рядом лежит `.scss`-файл (не `.module.scss`).
 
-```
-CalibrationSchedulePage.tsx
-CalibrationSchedulePage.scss  ✅
-```
-
 ---
 
 ## 3. Роутинг
@@ -151,17 +167,22 @@ CalibrationSchedulePage.scss  ✅
 | `/documents` | `DocumentsPage` | Документы + график поверок |
 | `/cabinet` | Кабинет по роли | Личный кабинет (выбирается по `user.role`) |
 
+**Gate смены пароля** — приоритет над всем: если `user.mustChangePassword === true`, рендерится `ChangePasswordPage` независимо от роли и маршрута.
+
 **Выбор кабинета по роли** (`App.tsx`):
 
 | `user.role` | Кабинет |
 |-------------|---------|
 | `administrator` | `AdminCabinetPage` |
+| `head_nurse` | `HeadNurseCabinetPage` |
+| `employee` | `EmployeeCabinetPage` |
 | `metrologist` | `MetrologistCabinetPage` |
 | `facility` | `FacilityCabinetPage` |
 | `it_department` | `ItDepartmentCabinetPage` |
 | `quality_department` | `QualityControlCabinetPage` |
 | `chief_doctor` | `ChiefCabinetPage` |
 | `dispatcher` | `DispatcherCabinetPage` |
+| Любая роль с `canAccessCabinet` | `EmployeeCabinetPage` |
 
 Переключение между промо и кабинетом управляется полем `portalView` в Zustand-сторе.
 
@@ -185,7 +206,7 @@ CalibrationSchedulePage.scss  ✅
 
 После отправки заявки пользователю показывается ID заявки для отслеживания статуса.
 
-**Статус заявки** — выпадающий список в шапке, позволяет проверить статус по ID без авторизации через публичный эндпоинт `GET /api/{type}-requests/:id/public`.
+**Статус заявки** — выпадающий список в шапке, позволяет проверить статус по ID без авторизации.
 
 ---
 
@@ -196,14 +217,12 @@ CalibrationSchedulePage.scss  ✅
 **Таб 1 — Документы**
 - Дерево разделов (`document_folders`) в сайдбаре
 - Список файлов выбранного раздела
-- Кнопка скачивания файла
 
 **Таб 2 — График поверок МКС и ПИ**
-- Таблица `CalibrationSchedulePublicTable` (компонент внутри файла)
+- Таблица `CalibrationSchedulePublicTable`
 - Фильтр по отделению (Select)
-- Сортировка: по дате ввода, дате выпуска, дате поверок, отделению, типу; направление ↑ / ↓
-- Данные загружаются из `GET /api/calibration-schedule` (публичный)
-- Таблица компактная: `size="small"`, `font-size: 11px`, перенос строк (не `ellipsis`), без горизонтального скролла
+- Сортировка по полям
+- `tableLayout="fixed"`, без горизонтального скролла
 
 ---
 
@@ -211,6 +230,33 @@ CalibrationSchedulePage.scss  ✅
 
 Все кабинеты используют `MainLayout` — боковое меню + контентная область.  
 Каждый раздел — отдельный компонент-страница, рендерится через `switch` по активному пункту меню.
+
+---
+
+### ChangePasswordPage — Смена пароля
+
+Показывается вместо любого кабинета, если `user.mustChangePassword === true`.
+
+- Поле «Текущий пароль» и «Новый пароль» (повтор)
+- Вызов `POST /api/auth/change-password`
+- После успеха обновляет токен в сторе и снимает флаг `mustChangePassword`
+
+---
+
+### EmployeeCabinetPage — Кабинет сотрудника
+
+| Раздел | Компонент | Описание |
+|--------|-----------|---------|
+| Журналы | `EmployeeJournalsPage` | Просмотр и подтверждение строк |
+
+---
+
+### HeadNurseCabinetPage — Кабинет главной медсестры
+
+| Раздел | Компонент | Описание |
+|--------|-----------|---------|
+| Журналы | `ManagedJournalsPage` | Создание и управление журналами |
+| Допуск | `DepartmentJournalAccessPage` | Выдача/отзыв допуска сотрудникам |
 
 ---
 
@@ -222,16 +268,108 @@ CalibrationSchedulePage.scss  ✅
 | Виды НС | `AdminReferenceIncidentTypesPage` | Виды и типы инцидентов |
 | Объявления | `AdminAnnouncementsPage` | CRUD объявлений |
 | Документы | `AdminDocumentsPage` | CRUD разделов и файлов |
-| ИТ-заявки | `AdminItRequestsPage` | Список + смена статуса + комментарий; индикатор просрочки |
+| ИТ-заявки | `AdminItRequestsPage` | Список + смена статуса + комментарий |
 | Заявки метрологу | `AdminMetrologistRequestsPage` | Список + смена статуса |
-| АХЧ-заявки | `AdminAhchRequestsPage` | Список + смена статуса; индикатор просрочки |
+| АХЧ-заявки | `AdminAhchRequestsPage` | Список + смена статуса |
 | Транспорт | `AdminTransportRequestsPage` | Список + назначение авто |
 | Автомобили | `AdminVehiclesPage` | CRUD автомобилей |
 | График поверок | `CalibrationSchedulePage` | Полный режим (все колонки) |
 | Инциденты | `IncidentsRegistryPanel` | Реестр нежелательных событий |
 | Аналитика | `AnalyticsPage` | Графики по заявкам |
-| Пользователи | `AdminUsersPage` | CRUD пользователей |
+| Пользователи | `AdminUsersPage` | CRUD пользователей + создание с любой ролью |
+| Сотрудники | `AdminEmployeesPage` | Управление сотрудниками |
 | Профиль организации | `AdminOrganizationPage` | Загрузка лого и hero |
+
+---
+
+### AdminUsersPage — Пользователи
+
+- Таблица всех пользователей: ФИО, логин, роль, дата создания
+- **Создать пользователя** (кнопка + модальное окно): ФИО, логин, роль (все роли, без ограничений), пароль
+- Блокировка / разблокировка аккаунта
+- Удаление пользователя
+
+---
+
+### AdminEmployeesPage — Сотрудники
+
+- Таблица сотрудников с колонками: ФИО, логин, роль, отделения/должности, статус (активен / заблокирован), `must_change_password`
+- **Создать вручную** — форма: ФИО, отделение, должность; логин и временный пароль генерируются автоматически
+- **Импорт из Excel** — двухшаговый визард:
+  1. Загрузить файл → предпросмотр распознанных сотрудников
+  2. Нажать «Импортировать» → создаёт аккаунты, возвращает логины/пароли
+- **Экспортировать учётные данные** — скачать xlsx с логинами и временными паролями после импорта
+- **Сбросить пароль** — генерирует новый временный пароль
+- **Заблокировать / разблокировать** аккаунт
+- Список отделений загружается напрямую через `fetchDepartments()` (не из Zustand-стора)
+
+---
+
+### ManagedJournalsPage — Журналы (главная медсестра / администратор)
+
+Компонент объединяет три режима: список журналов, `JournalViewer` (просмотр), `JournalEditor` (редактирование).
+
+#### Список журналов
+
+- Таблица: Название, Отделение, Статус (Черновик / Опубликован / Архив), кол-во строк
+- Кнопка **«Просмотр»** (👁) — только для опубликованных и архивных журналов → открывает `JournalViewer`
+- Кнопка **«Редактировать»** → открывает `JournalEditor`
+- Кнопка **«Опубликовать»** — для черновиков
+- Кнопки **«В архив»** / **«Восстановить»**
+- Кнопка **«Создать журнал»** → модальное окно: название + отделение
+
+#### JournalViewer — read-only просмотр
+
+- Шапка: «← Назад», название, статус, счётчик **«Подписано: X / Y»**, **«Экспорт в Excel»**
+- Таблица: все data-колонки + колонка «Подтверждение»
+  - Подписано: зелёный тег `✓ Подписано` + ФИО подписавшего + должность + дата/время
+  - Не подписано: серый тег
+- Подписанные строки подсвечены светло-зелёным фоном
+- Нет кнопок редактирования
+
+#### JournalEditor — редактор журнала
+
+**Раздел «Колонки»** (только для черновиков):
+
+- Список колонок: номер, название (Input), тип (Select: Текст / Дата / Подтверждение)
+- Для `text` и `date` колонок — переключатель **«Вводит медсестра» / «Только просмотр»** (`is_editable_by_employee`)
+  - `Вводит медсестра` (включён) — сотрудник заполняет поле в модалке подтверждения
+  - `Только просмотр` (выключен) — поле read-only для сотрудника
+- Кнопки: **«Добавить колонку»**, **«Загрузить из Excel»** (импортирует заголовки из первой строки xlsx), **«Сохранить колонки»**
+- Предупреждение о несохранённых колонках
+
+**Раздел «Строки»**:
+
+- Таблица строк (нет горизонтального скролла, `tableLayout="fixed"`, текст переносится)
+- Колонки действий: **✎ Редактировать**, **⧉ Копировать**, **🗑 Удалить** (Popconfirm)
+- Кнопка **«Добавить строку»**
+- Модальное окно добавления/редактирования: поля для каждой data-колонки (DatePicker для `date`, Input для `text`)
+- Кнопка **«Экспорт в Excel»** — скачать все строки с подтверждениями
+
+---
+
+### EmployeeJournalsPage — Журналы сотрудника
+
+- Фильтр по отделению (Select)
+- Список доступных журналов (только опубликованные, только доступные отделения)
+- Таблица строк открытого журнала (`tableLayout="fixed"`, без горизонтального скролла)
+- Колонка «Подтверждение»:
+  - Подписано: зелёный тег + ФИО + дата
+  - Не подписано: кнопка **«Подтвердить выполнение»**
+
+**Модальное окно подтверждения:**
+- **Данные строки** (read-only): значения колонок с `is_editable_by_employee = false`
+- **Заполните перед подтверждением**: поля ввода для колонок с `is_editable_by_employee = true` (DatePicker для `date`, Input для `text`), предзаполнены текущим значением строки
+- Поле **«Введите действующий пароль»** (bcrypt-проверка на сервере)
+- При подтверждении: editable-значения фиксируются в новой ревизии строки, создаётся запись подтверждения с ФИО и временем
+
+---
+
+### DepartmentJournalAccessPage — Допуск к журналам
+
+- Список отделений (только те, к которым привязан владелец журналов)
+- При выборе отделения — список сотрудников с чекбоксами «Допущен»
+- Включение/отключение → `PATCH /api/journal-access/departments/:deptId/employees/:userId`
 
 ---
 
@@ -302,27 +440,21 @@ CalibrationSchedulePage.scss  ✅
 **Функции:**
 - Таблица записей графика поверок
 - Фильтры по всем полям → свёрнуты в Ant Design `Collapse` («Фильтры»), кнопка «Сбросить»
-- Сортировка: поле + направление (↑/↓) — находится вне Collapse
+- Сортировка: поле + направление (↑/↓)
 - **Загрузить Excel** — импорт через `parseCalibrationExcel.ts`
-- **Выгрузить в Excel** — экспорт текущей отфильтрованной выборки через `xlsx`
-- **Удалить все данные** — очистка таблицы (временная кнопка для первоначальной загрузки)
+- **Выгрузить в Excel** — экспорт текущей отфильтрованной выборки
+- **Удалить все данные** — очистка таблицы
 - **Добавить / Редактировать / Удалить** одну запись
 
-**Режим `compact`** (метролог): отображаются только колонки — Дата действующей поверки, Дата следующей поверки, Номенклатура, Тип, Дата ввода в эксплуатацию.
+**Режим `compact`** (метролог): только — Дата действующей поверки, Дата следующей поверки, Номенклатура, Тип, Дата ввода в эксплуатацию.
 
 **Полный режим** (администратор): все 12 колонок + действия.
-
-**Индикатор просрочки в заявках ИТ и АХЧ:**  
-Если заявка просрочена (`created_at + urgency_days < today`), в теге срочности отображается: `«Срочность — Просрочено (на N дн.)»`.
 
 ---
 
 ## 6. Компоненты
 
 ### Модальные формы заявок
-
-Все формы используют Ant Design `Form`, `Modal`.  
-После успешной отправки показывают номер созданной заявки.
 
 | Компонент | Поля |
 |-----------|------|
@@ -348,27 +480,54 @@ CalibrationSchedulePage.scss  ✅
 Все сервисы находятся в `src/Core/services/`.  
 Используют настроенный Axios instance из `Core/api/http.ts`.
 
-**`http.ts`:** автоматически добавляет заголовок `Authorization: Bearer <token>` из `localStorage`.
+**`http.ts`:** автоматически добавляет заголовок `Authorization: Bearer <token>` из localStorage.
 
-Пример сервиса:
+### `journal.service.ts`
 
+| Функция | Эндпоинт | Описание |
+|---------|---------|---------|
+| `fetchJournals(token, scope)` | `GET /journals?scope=` | Список журналов |
+| `fetchJournal(id, token)` | `GET /journals/:id` | Журнал с колонками |
+| `createJournal(payload, token)` | `POST /journals` | Создать черновик |
+| `updateJournal(id, payload, token)` | `PATCH /journals/:id` | Переименовать |
+| `updateJournalColumns(id, columns, token)` | `PUT /journals/:id/columns` | Обновить колонки |
+| `publishJournal(id, token)` | `POST /journals/:id/publish` | Опубликовать |
+| `archiveJournal(id, token)` | `POST /journals/:id/archive` | Архивировать |
+| `restoreJournal(id, token)` | `POST /journals/:id/restore` | Восстановить |
+| `fetchJournalRows(journalId, token)` | `GET /journals/:id/rows` | Список строк |
+| `addJournalRow(journalId, values, token)` | `POST /journals/:id/rows` | Добавить строку |
+| `updateJournalRow(journalId, rowId, values, rev, token)` | `PATCH /journals/:id/rows/:rowId` | Редактировать строку |
+| `deleteJournalRow(journalId, rowId, token)` | `DELETE /journals/:id/rows/:rowId` | Удалить строку |
+| `copyJournalRow(journalId, rowId, payload, token)` | `POST /journals/:id/rows/:rowId/copy` | Скопировать строку |
+| `confirmJournalRow(journalId, rowId, payload, token)` | `POST /journals/:id/rows/:rowId/confirm` | Подтвердить строку |
+| `correctJournalRow(journalId, rowId, payload, token)` | `POST /journals/:id/rows/:rowId/corrections` | Корректировка |
+| `fetchRowHistory(journalId, rowId, token)` | `GET /journals/:id/rows/:rowId/history` | История ревизий |
+
+**`confirmJournalRow` payload:**
 ```ts
-// calibration-schedule.service.ts
-export const fetchCalibrationSchedule = () =>
-  http.get<CalibrationScheduleItem[]>('/calibration-schedule').then(r => r.data);
-
-export const importCalibrationSchedule = (items: CalibrationSchedulePayload[]) =>
-  http.post('/calibration-schedule/import', { items }, { timeout: 60000 });
-
-export const clearCalibrationSchedule = () =>
-  http.delete('/calibration-schedule/all');
+{
+  expectedRevision: number;
+  password: string;
+  idempotencyKey?: string;
+  editableValues?: Record<string, string | null>;  // значения editable-колонок
+}
 ```
+
+### `employee.service.ts`
+
+Функции: `fetchEmployees`, `createEmployee`, `updateEmployee`, `resetEmployeePassword`, `importEmployees`.
+
+### `journal-access.service.ts`
+
+Функции: `fetchJournalDepartments`, `fetchDepartmentEmployees`, `updateEmployeeAccess`.
 
 ---
 
 ## 8. TypeScript-типы
 
 Все типы определены в `src/Core/types/common.ts`.
+
+### Базовые типы
 
 | Тип | Описание |
 |-----|---------|
@@ -386,12 +545,56 @@ export const clearCalibrationSchedule = () =>
 | `Vehicle` | `{id, make, model, license_plate, driver}` |
 | `Incident` | Нежелательное событие со всеми полями |
 | `CalibrationScheduleItem` | Запись графика поверок |
-| `User` | `{id, fullName, role, roleTitle, permissions}` |
-| `RolePermissions` | Объект с булевыми флагами разрешений |
-| `RoleOption` | `{id, title, value}` |
-| `UserListItem` | Пользователь для таблицы управления |
 | `OrganizationProfile` | `{id, logo_url, hero_image_url, updated_at}` |
+
+### Аутентификация и пользователи
+
+| Тип | Описание |
+|-----|---------|
+| `User` | `{id, fullName, role, roleTitle, permissions, mustChangePassword?}` |
+| `RolePermissions` | Объект с булевыми флагами разрешений (см. ниже) |
+| `RoleOption` | `{id, title, value}` |
+| `UserListItem` | `{id, username, full_name, role, role_title, created_at}` |
 | `AuthResponse` | `{token, user}` |
+
+**`RolePermissions`:**
+```ts
+{
+  canAccessCabinet: boolean;
+  canAccessAdminCabinet: boolean;
+  canAccessQualityCabinet: boolean;
+  canAccessCabinetChief: boolean;
+  canManageReferences: boolean;
+  canManageDocuments: boolean;
+  canViewIncidents: boolean;
+  canViewItRequests: boolean;
+  canManageItRequests: boolean;
+  canManageEmployees?: boolean;
+  canManageOwnJournals?: boolean;
+  canManageAllJournals?: boolean;
+  canManageJournalAccess?: boolean;
+}
+```
+
+### Сотрудники
+
+| Тип | Описание |
+|-----|---------|
+| `EmployeeDepartmentAssignment` | `{id, name, position, is_active, dept_version?}` |
+| `EmployeeItem` | `{id, username, full_name, role, role_title, is_active, employee_code, departments[], created_at, must_change_password?, profile_version?}` |
+| `EmployeeCredentials` | `{username, temporaryPassword}` |
+
+### Журналы
+
+| Тип | Описание |
+|-----|---------|
+| `JournalColumnType` | `'text' \| 'date' \| 'confirmation'` |
+| `JournalColumn` | `{id, journal_id, title, type, sort_order, is_editable_by_employee}` |
+| `JournalStatus` | `'draft' \| 'published' \| 'archived'` |
+| `Journal` | `{id, title, department_id, department_name, owner_user_id?, owner_name?, status, version, schema_version?, first_published_at, created_at, updated_at, row_count?, columns?}` |
+| `JournalRowConfirmation` | `{id, signer_full_name, signer_position, confirmed_at, status}` |
+| `JournalRow` | `{id, sort_order, current_revision, values, created_at, updated_at, confirmation_id?, signer_full_name?, signer_position?, confirmed_at?, confirmation_status?}` |
+| `DepartmentAccessEmployee` | `{user_id, full_name, position, has_access, granted_at?, revoked_at?}` |
 
 ---
 
@@ -402,11 +605,12 @@ export const clearCalibrationSchedule = () =>
 | Поле | Тип | Описание |
 |------|-----|---------|
 | `token` | `string \| null` | JWT-токен (сохраняется в localStorage) |
-| `user` | `User \| null` | Текущий пользователь |
+| `user` | `User \| null` | Текущий пользователь (включая `mustChangePassword`) |
 | `portalView` | `'promo' \| 'cabinet'` | Режим: промо-сайт или кабинет |
 | `organization` | `OrganizationProfile \| null` | Данные организации (лого, hero) |
 
-Используется минимально. Справочники (отделения, типы инцидентов) загружаются в локальный стейт страниц.
+Используется минимально. Справочники загружаются в локальный стейт страниц.  
+**Важно:** список отделений в `AdminEmployeesPage` загружается напрямую через `fetchDepartments()`, а не из стора — стор отделений заполняется только на `HomePage` через `useReferences()`.
 
 ---
 
@@ -414,33 +618,23 @@ export const clearCalibrationSchedule = () =>
 
 ### `parseCalibrationExcel.ts`
 
-Парсит Excel-файл (`.xlsx`) для импорта графика поверок.
-
-**Поддерживаемые форматы дат:**
-- Серийный Excel-номер (число > 20000)
-- Только год: `2024` → `2024-01-01`
-- ISO: `2024-05-15`
-- `DD.MM.YYYY`
-- `M/D/YY` (US-формат, который генерирует библиотека `xlsx`)
-- `Mon-YY` (например, `Aug-26`)
-
-**Защита ведущих нулей:**  
-Инвентарные и заводские номера читаются через `raw: false` (форматированный текст), что сохраняет `"03292"` вместо `3292`.
-
-**Сопоставление отделений:**  
-По имени, нечувствительно к регистру, `ё` → `е`, лишние пробелы убираются. Если отделение не найдено — поле `department_id` остаётся `null`.
-
----
+Парсит Excel-файл для импорта графика поверок. Поддерживаемые форматы дат: серийный номер Excel, только год, ISO, `DD.MM.YYYY`, `M/D/YY`, `Mon-YY`.
 
 ### `calibrationSchedule.view.ts`
 
-Утилиты для отображения графика поверок в таблице.
+- `CalibrationSortKey` — тип ключа сортировки
+- `CALIBRATION_SORT_OPTIONS` — опции для Select
+- `sortCalibrationItems(items, key, direction)` — сортировка
 
-- `CalibrationSortKey` — тип ключа сортировки (6 вариантов)
-- `CALIBRATION_SORT_OPTIONS` — массив опций для Select
-- `sortCalibrationItems(items, key, direction)` — сортировка с `String.localeCompare({numeric: true})`
+### `parseEmployeesExcel.ts`
 
----
+Парсит Excel-файл для пакетного импорта сотрудников.  
+Ожидает столбцы: ФИО, отделение, должность.  
+Сопоставляет отделения по имени (нечувствительно к регистру, `ё` → `е`).
+
+### `exportEmployeeCredentials.ts`
+
+Формирует xlsx-файл с логинами и временными паролями созданных сотрудников.
 
 ### `date.utils.ts`
 
@@ -472,32 +666,18 @@ export const clearCalibrationSchedule = () =>
 | `$color-bg-soft` | `#F4F7FB` | Фон страниц |
 | `$color-border` | `#D8DEEA` | Границы |
 
-### Таблица графика поверок на промо (`.docs-page__schedule-table`)
+### Таблицы журналов
+
+Все таблицы строк журналов (и `ManagedJournalsPage`, и `EmployeeJournalsPage`) используют:
+- `tableLayout="fixed"` — колонки равномерно занимают ширину, нет горизонтального скролла
+- `word-break: break-word; white-space: normal` — длинный текст переносится
+
+### JournalViewer: подсветка подписанных строк
 
 ```scss
-.docs-page__schedule-table {
-  font-size: 11px;
-
-  .ant-table-cell {
-    padding: 6px 5px;
-    white-space: normal;
-    word-break: break-word;
-    overflow-wrap: anywhere;
-  }
-}
-```
-
-Таблица использует `tableLayout="fixed"` и не имеет горизонтального скролла.
-
-### Фильтры графика поверок (`.calibration-schedule-page__filters`)
-
-```scss
-.calibration-schedule-page__filters {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, 200px);
-  gap: 8px;
-
-  > * { width: 100%; }
+.journal-viewer__row--signed {
+  background-color: #f6ffed;
+  &:hover > td { background-color: #eaf7de !important; }
 }
 ```
 
@@ -512,7 +692,7 @@ VITE_API_URL=http://localhost:4000/api
 VITE_IS_SHOW_REGISTRATION=false
 ```
 
-`VITE_IS_SHOW_REGISTRATION=true` — показывает кнопку/форму регистрации на промо-сайте.
+`VITE_IS_SHOW_REGISTRATION=true` — показывает форму регистрации на промо-сайте (только для непривилегированных ролей).
 
 ---
 

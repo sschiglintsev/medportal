@@ -1,0 +1,14 @@
+@use '../styles/variables' as *;
+
+.admin-employees-page {
+  padding: 24px;
+
+  &__toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+}

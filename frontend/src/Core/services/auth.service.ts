@@ -35,3 +35,13 @@ export async function fetchRegistrationRoles(): Promise<RoleOption[]> {
   const { data } = await authApi.get<RoleOption[]>('/auth/roles');
   return data;
 }
+
+export async function changePassword(
+  payload: { currentPassword: string; newPassword: string },
+  token: string,
+): Promise<AuthResponse> {
+  const { data } = await authApi.post<AuthResponse>('/auth/change-password', payload, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return data;
+}

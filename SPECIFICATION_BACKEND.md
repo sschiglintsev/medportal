@@ -45,6 +45,9 @@ backend/
 │   ├── controllers/
 │   │   ├── auth.controller.ts
 │   │   ├── user.controller.ts
+│   │   ├── employees.controller.ts       ← Управление сотрудниками
+│   │   ├── journal-access.controller.ts  ← Допуск отделений к журналам
+│   │   ├── journals.controller.ts        ← Журналы, колонки, строки, подтверждения
 │   │   ├── announcement.controller.ts
 │   │   ├── document.controller.ts
 │   │   ├── documentFolder.controller.ts
@@ -63,6 +66,9 @@ backend/
 │   ├── routes/
 │   │   ├── auth.routes.ts
 │   │   ├── user.routes.ts
+│   │   ├── employees.routes.ts
+│   │   ├── journal-access.routes.ts
+│   │   ├── journals.routes.ts
 │   │   ├── announcement.routes.ts
 │   │   ├── document.routes.ts
 │   │   ├── documentFolder.routes.ts
@@ -79,13 +85,17 @@ backend/
 │   │   ├── max.routes.ts
 │   │   └── calibration-schedule.routes.ts
 │   ├── middlewares/
-│   │   ├── auth.middleware.ts      ← requireAuth, requireRoles, requirePermission, requireAnyPermission
+│   │   ├── auth.middleware.ts      ← requireAuth, requireRoles, requirePermission,
+│   │   │                              requireAnyPermission, requirePasswordChanged
 │   │   ├── rbac.middleware.ts      ← Готовые RBAC-проверки для конкретных разделов
 │   │   └── error.middleware.ts     ← Глобальный обработчик ошибок
+│   ├── utils/
+│   │   ├── password.ts             ← generateTemporaryPassword()
+│   │   └── transliterate.ts        ← generateUsername() из ФИО
 │   └── services/
-│       ├── role.service.ts         ← Инициализация и получение прав по роли
+│       ├── role.service.ts         ← Инициализация БД (ensureAuthTables) + права по роли
 │       └── max-bot.service.ts      ← Отправка уведомлений через Bot API Max
-├── sql/                            ← SQL-миграции (023 файла, пронумерованные)
+├── sql/                            ← SQL-миграции (справочные, не применяются вручную)
 ├── uploads/
 │   ├── documents/                  ← Загруженные файлы документов
 │   └── organization/               ← Логотип и hero-изображение
@@ -96,19 +106,23 @@ backend/
 - Только параметризованные SQL-запросы — `$1, $2, ...`; никаких шаблонных строк
 - После `pool.connect()` всегда вызывать `client.release()` (или использовать `withDbClient()`)
 - Все маршруты начинаются с `/api`
+- Async middleware в Express 4 оборачивается в sync wrapper + `.catch(next)`
 
 ---
 
 ## 3. База данных
 
-### Применение миграций
+### Применение схемы
 
-```bash
-psql -U postgres -d medportal -f backend/sql/001_create_users.sql
-# ... повторить для каждого файла по порядку до 023
-```
+Вся схема создаётся **автоматически при старте сервера** через `ensureAuthTables()` в `role.service.ts`.  
+Файлы в `backend/sql/` — справочные, применять вручную не нужно.
 
-Новые изменения схемы — отдельным пронумерованным файлом.
+Функция `ensureAuthTables()` вызывает:
+- `ensureRolesSchema()` — создаёт таблицу `roles`, добавляет отсутствующие колонки
+- `migrateUsersTable()` — создаёт таблицу `users`, добавляет новые колонки
+- `upsertRoles()` — вставляет/обновляет предустановленные роли
+- `ensureEmployeeTables()` — создаёт таблицы сотрудников
+- `ensureJournalTables()` — создаёт таблицы модуля журналов
 
 ---
 
@@ -121,6 +135,11 @@ psql -U postgres -d medportal -f backend/sql/001_create_users.sql
 | `full_name` | VARCHAR(255) NOT NULL | ФИО |
 | `role` | VARCHAR(100) → `roles(value)` | Роль (FK) |
 | `password_hash` | TEXT NOT NULL | Bcrypt-хеш пароля |
+| `is_active` | BOOLEAN NOT NULL DEFAULT TRUE | Активен ли аккаунт |
+| `auth_version` | INTEGER NOT NULL DEFAULT 0 | Версия сессии (инкрементируется при сбросе пароля) |
+| `must_change_password` | BOOLEAN NOT NULL DEFAULT FALSE | Требует смены пароля при входе |
+| `temporary_password_expires_at` | TIMESTAMPTZ | Срок действия временного пароля |
+| `password_changed_at` | TIMESTAMPTZ | Дата последней смены пароля |
 | `max_chat_id` | VARCHAR | ID чата в Max (nullable) |
 | `max_link_code` | VARCHAR | Одноразовый код привязки (nullable) |
 | `max_link_code_expires_at` | TIMESTAMP | Срок действия кода |
@@ -145,26 +164,31 @@ psql -U postgres -d medportal -f backend/sql/001_create_users.sql
 | `can_view_incidents` | BOOLEAN | Просмотр инцидентов |
 | `can_view_it_requests` | BOOLEAN | Просмотр ИТ-заявок |
 | `can_manage_it_requests` | BOOLEAN | Полное управление ИТ-заявками |
+| `can_manage_employees` | BOOLEAN | Управление сотрудниками |
+| `can_manage_own_journals` | BOOLEAN | Управление своими журналами |
+| `can_manage_all_journals` | BOOLEAN | Управление всеми журналами (любого владельца) |
+| `can_manage_journal_access` | BOOLEAN | Настройка допуска сотрудников к журналам |
 | `is_active` | BOOLEAN | Активна ли роль |
 | `created_at` | TIMESTAMP | — |
 
 **Предустановленные роли:**
 
-| `value` | `title` |
-|---------|---------|
-| `administrator` | Администратор |
-| `chief_doctor` | Главный врач |
-| `quality_department` | Контроль качества (Отдел качества) |
-| `it_department` | ИТ отдел |
-| `facility` | АХЧ |
-| `metrologist` | Метролог |
-| `dispatcher` | Диспетчер |
-| `employee` | Сотрудник |
-| `hr_department` | Отдел кадров |
-| `planning_department` | Планово-экономический отдел |
-| `trade_union` | Профсоюз |
-| `epidemiologist` | Эпидемиолог |
-| `administration` | Администрация |
+| `value` | `title` | Ключевые права |
+|---------|---------|----------------|
+| `administrator` | Администратор | `can_access_cabinet`, `can_access_admin_cabinet`, `can_manage_references`, `can_manage_documents`, `can_manage_employees`, `can_manage_all_journals`, `can_manage_journal_access` |
+| `head_nurse` | Главная медсестра | `can_access_cabinet`, `can_manage_own_journals`, `can_manage_journal_access` |
+| `employee` | Сотрудник | `can_access_cabinet` |
+| `chief_doctor` | Главный врач | `can_access_cabinet`, `can_access_cabinet_chief` |
+| `quality_department` | Контроль качества | `can_access_cabinet`, `can_access_quality_cabinet`, `can_manage_references`, `can_view_incidents` |
+| `it_department` | ИТ отдел | `can_access_cabinet`, `can_manage_it_requests` |
+| `facility` | АХЧ | `can_access_cabinet` |
+| `metrologist` | Метролог | `can_access_cabinet` |
+| `dispatcher` | Диспетчер | `can_access_cabinet` |
+| `hr_department` | Отдел кадров | — |
+| `planning_department` | Планово-экономический отдел | — |
+| `trade_union` | Профсоюз | — |
+| `epidemiologist` | Эпидемиолог | — |
+| `administration` | Администрация | — |
 
 ---
 
@@ -179,236 +203,179 @@ psql -U postgres -d medportal -f backend/sql/001_create_users.sql
 
 ---
 
-### `announcements` — Объявления
+### `employee_profiles` — Профили сотрудников
 
 | Колонка | Тип | Описание |
 |---------|-----|---------|
 | `id` | SERIAL PK | — |
-| `title` | VARCHAR(255) NOT NULL | Заголовок |
-| `description` | TEXT NOT NULL | Краткое описание |
-| `full_description` | TEXT | Полный текст |
-| `image_url` | TEXT | Путь к изображению |
-| `published_date` | DATE NOT NULL | Дата публикации |
-| `created_at` | TIMESTAMP | — |
-| `updated_at` | TIMESTAMP | — |
+| `user_id` | INTEGER UNIQUE → `users(id)` ON DELETE CASCADE | Пользователь |
+| `employee_code` | VARCHAR(50) UNIQUE | Табельный номер (nullable) |
+| `profile_version` | INTEGER NOT NULL DEFAULT 1 | Версия профиля |
+| `created_at` | TIMESTAMPTZ | — |
+| `updated_at` | TIMESTAMPTZ | — |
 
 ---
 
-### `document_folders` — Разделы документов
+### `employee_departments` — Привязка сотрудника к отделениям
 
 | Колонка | Тип | Описание |
 |---------|-----|---------|
 | `id` | SERIAL PK | — |
-| `name` | VARCHAR(255) NOT NULL | Название раздела |
-| `parent_id` | INTEGER → `document_folders(id)` ON DELETE CASCADE | Родительский раздел (nullable) |
-| `sort_order` | INTEGER NOT NULL DEFAULT 0 | Порядок сортировки |
-| `created_at` | TIMESTAMP | — |
-
----
-
-### `documents` — Файлы документов
-
-| Колонка | Тип | Описание |
-|---------|-----|---------|
-| `id` | SERIAL PK | — |
-| `folder_id` | INTEGER → `document_folders(id)` ON DELETE SET NULL | Раздел (nullable) |
-| `title` | VARCHAR(255) NOT NULL | Название |
-| `description` | TEXT | Описание |
-| `file_url` | TEXT NOT NULL | Путь к файлу на диске |
-| `original_filename` | VARCHAR(500) | Оригинальное имя файла |
-| `sort_order` | INTEGER NOT NULL DEFAULT 0 | Порядок |
-| `created_at` | TIMESTAMP | — |
-| `updated_at` | TIMESTAMP | — |
-
----
-
-### `incident_view_types` — Виды нежелательных событий
-
-| Колонка | Тип | Описание |
-|---------|-----|---------|
-| `id` | SERIAL PK | — |
-| `name` | VARCHAR(255) UNIQUE NOT NULL | Название вида |
-| `care_type` | VARCHAR(50) NOT NULL | `'Стационар'` или `'Поликлиника'` |
-| `created_at` | TIMESTAMP | — |
-
----
-
-### `incident_types` — Типы нежелательных событий
-
-| Колонка | Тип | Описание |
-|---------|-----|---------|
-| `id` | SERIAL PK | — |
-| `name` | VARCHAR(255) UNIQUE NOT NULL | Название типа |
-| `created_at` | TIMESTAMP | — |
-
----
-
-### `incident_view_type_incident_types` — M:M связь видов и типов
-
-| Колонка | Тип |
-|---------|-----|
-| `incident_view_type_id` | INTEGER → `incident_view_types(id)` ON DELETE CASCADE |
-| `incident_type_id` | INTEGER → `incident_types(id)` ON DELETE CASCADE |
-| PK | `(incident_view_type_id, incident_type_id)` |
-
----
-
-### `incidents` — Нежелательные события (инциденты)
-
-| Колонка | Тип | Описание |
-|---------|-----|---------|
-| `id` | SERIAL PK | — |
-| `incident_date` | DATE NOT NULL | Дата события |
-| `incident_time` | TIME NOT NULL | Время события |
-| `place` | VARCHAR(255) | Место |
-| `patient_fio` | VARCHAR(255) NOT NULL | ФИО пациента |
-| `patient_birth_date` | DATE NOT NULL | Дата рождения пациента |
-| `circumstances` | TEXT NOT NULL | Обстоятельства |
-| `employee_fio` | VARCHAR(255) NOT NULL | ФИО сотрудника |
-| `employee_position` | VARCHAR(255) NOT NULL | Должность |
-| `legal_presence` | VARCHAR(100) NOT NULL | Юридическое присутствие |
+| `user_id` | INTEGER → `users(id)` ON DELETE CASCADE | Сотрудник |
 | `department_id` | INTEGER → `departments(id)` ON DELETE RESTRICT | Отделение |
-| `incident_view_type_id` | INTEGER → `incident_view_types(id)` ON DELETE SET NULL | Вид события |
-| `incident_type_id` | INTEGER → `incident_types(id)` ON DELETE RESTRICT | Тип события |
-| `consequences` | TEXT NOT NULL | Последствия |
-| `severity_level` | VARCHAR(20) | Степень тяжести |
-| `status` | VARCHAR(50) DEFAULT `'new'` | Статус |
-| `created_at` | TIMESTAMP | — |
+| `position` | VARCHAR(255) NOT NULL DEFAULT '' | Должность в отделении |
+| `is_active` | BOOLEAN NOT NULL DEFAULT TRUE | Активна ли привязка |
+| `dept_version` | INTEGER NOT NULL DEFAULT 1 | Версия для оптимистичных блокировок |
+| `created_at` | TIMESTAMPTZ | — |
+| `updated_at` | TIMESTAMPTZ | — |
+
+Уникальный индекс: `(user_id, department_id)`.
 
 ---
 
-### `urgency_levels` — Уровни срочности заявок
+### `department_journal_access` — Допуск сотрудников к журналам отделения
 
 | Колонка | Тип | Описание |
 |---------|-----|---------|
 | `id` | SERIAL PK | — |
-| `name` | VARCHAR(50) NOT NULL | Название («1 день», «Неделя», …) |
-| `days` | INTEGER NOT NULL | Количество дней на выполнение |
+| `user_id` | INTEGER → `users(id)` ON DELETE CASCADE | Сотрудник |
+| `department_id` | INTEGER → `departments(id)` ON DELETE CASCADE | Отделение |
+| `granted_by` | INTEGER → `users(id)` ON DELETE SET NULL | Кто предоставил допуск |
+| `is_active` | BOOLEAN NOT NULL DEFAULT TRUE | Активен ли допуск |
+| `granted_at` | TIMESTAMPTZ | Дата выдачи |
+| `revoked_at` | TIMESTAMPTZ | Дата отзыва (nullable) |
 
-Предустановленные значения: 1 день, 2 дня, 3 дня, Неделя (7), Две недели (14), Месяц (30).
+Уникальный индекс: `(user_id, department_id)`.
 
 ---
 
-### `it_requests` — Заявки в ИТ
+### `idempotency_keys` — Идемпотентность операций
+
+| Колонка | Тип | Описание |
+|---------|-----|---------|
+| `id` | BIGSERIAL PK | — |
+| `actor_user_id` | INTEGER → `users(id)` | Пользователь-инициатор |
+| `operation` | VARCHAR(100) | Тип операции (например, `'copy_row'`, `'confirm_row'`) |
+| `key` | VARCHAR(500) | Ключ идемпотентности |
+| `result_id` | TEXT | ID созданного ресурса |
+| `created_at` | TIMESTAMPTZ | — |
+
+Уникальный индекс: `(actor_user_id, operation, key)`.
+
+---
+
+### `journals` — Электронные журналы
 
 | Колонка | Тип | Описание |
 |---------|-----|---------|
 | `id` | SERIAL PK | — |
-| `full_name` | VARCHAR(255) NOT NULL | ФИО заявителя |
-| `phone` | VARCHAR(50) NOT NULL | Телефон |
-| `department` | VARCHAR(255) NOT NULL | Отделение (свободный текст) |
-| `location` | VARCHAR(255) NOT NULL | Кабинет/место |
-| `request_text` | TEXT NOT NULL | Текст заявки |
-| `remote_access_id` | VARCHAR(100) | ID удалённого доступа |
-| `urgency_id` | INTEGER → `urgency_levels(id)` | Срочность |
-| `status` | VARCHAR(50) DEFAULT `'new'` | Статус |
-| `comment` | TEXT | Комментарий исполнителя |
-| `created_at` | TIMESTAMP | — |
+| `title` | VARCHAR(255) NOT NULL | Название журнала |
+| `department_id` | INTEGER → `departments(id)` ON DELETE RESTRICT | Отделение |
+| `owner_user_id` | INTEGER → `users(id)` ON DELETE RESTRICT | Владелец (главная медсестра) |
+| `status` | VARCHAR(20) CHECK (`draft`, `published`, `archived`) DEFAULT `draft` | Статус |
+| `version` | INTEGER NOT NULL DEFAULT 1 | Версия (оптимистичная блокировка) |
+| `schema_version` | INTEGER NOT NULL DEFAULT 1 | Версия схемы колонок |
+| `first_published_at` | TIMESTAMPTZ | Дата первой публикации (после — схема заморожена) |
+| `created_at` | TIMESTAMPTZ | — |
+| `updated_at` | TIMESTAMPTZ | — |
+| `archived_at` | TIMESTAMPTZ | — |
 
 ---
 
-### `ahch_requests` — Заявки в АХЧ
+### `journal_columns` — Колонки журнала
+
+| Колонка | Тип | Описание |
+|---------|-----|---------|
+| `id` | UUID PK DEFAULT `gen_random_uuid()` | Стабильный идентификатор для значений строк |
+| `journal_id` | INTEGER → `journals(id)` ON DELETE CASCADE | Журнал |
+| `title` | VARCHAR(255) NOT NULL | Название колонки |
+| `type` | VARCHAR(20) CHECK (`text`, `date`, `confirmation`) | Тип данных |
+| `sort_order` | INTEGER NOT NULL DEFAULT 0 | Порядок отображения |
+| `is_editable_by_employee` | BOOLEAN NOT NULL DEFAULT TRUE | Может ли сотрудник заполнять поле при подтверждении |
+
+Уникальный индекс: `(journal_id) WHERE type = 'confirmation'` — не более одной confirmation-колонки.
+
+**Правило `is_editable_by_employee`:**
+- `TRUE` (по умолчанию) — сотрудник видит это поле как ввод в модалке подтверждения
+- `FALSE` — поле только для чтения; заполняется главной медсестрой при создании строк
+
+---
+
+### `journal_rows` — Строки журнала (мягкое удаление)
 
 | Колонка | Тип | Описание |
 |---------|-----|---------|
 | `id` | SERIAL PK | — |
-| `address` | VARCHAR(500) NOT NULL | Адрес/место |
-| `department` | VARCHAR(255) NOT NULL | Отделение (свободный текст) |
-| `request_text` | TEXT NOT NULL | Текст заявки |
-| `employee_phone` | VARCHAR(50) NOT NULL | Телефон |
-| `urgency_id` | INTEGER → `urgency_levels(id)` | Срочность |
-| `status` | VARCHAR(50) DEFAULT `'new'` | Статус |
-| `comment` | TEXT | Комментарий |
-| `created_at` | TIMESTAMP | — |
+| `journal_id` | INTEGER → `journals(id)` ON DELETE RESTRICT | Журнал |
+| `sort_order` | INTEGER NOT NULL DEFAULT 0 | Порядок строки |
+| `current_revision` | INTEGER NOT NULL DEFAULT 1 | Указатель на актуальную ревизию |
+| `deleted_at` | TIMESTAMPTZ | Мягкое удаление (nullable) |
+| `deleted_by` | INTEGER → `users(id)` ON DELETE SET NULL | Кто удалил |
+| `deletion_reason` | TEXT | Причина удаления |
+| `created_at` | TIMESTAMPTZ | — |
+| `updated_at` | TIMESTAMPTZ | — |
 
 ---
 
-### `metrologist_requests` — Заявки метрологу
+### `journal_row_revisions` — Неизменяемые ревизии строк
 
 | Колонка | Тип | Описание |
 |---------|-----|---------|
-| `id` | SERIAL PK | — |
-| `full_name` | VARCHAR(255) NOT NULL | ФИО заявителя |
-| `phone` | VARCHAR(50) NOT NULL | Телефон |
-| `department` | VARCHAR(255) NOT NULL | Отделение |
-| `location` | VARCHAR(255) NOT NULL | Место |
-| `request_text` | TEXT NOT NULL | Текст заявки |
-| `status` | VARCHAR(50) DEFAULT `'new'` | Статус |
-| `comment` | TEXT | Комментарий |
-| `created_at` | TIMESTAMP | — |
+| `row_id` | INTEGER → `journal_rows(id)` | Строка |
+| `revision` | INTEGER | Номер ревизии |
+| `values` | JSONB NOT NULL DEFAULT `{}` | Значения `{column_id: value}` |
+| `schema_snapshot` | JSONB NOT NULL DEFAULT `{}` | Снимок схемы на момент создания |
+| `created_by` | INTEGER → `users(id)` ON DELETE SET NULL | Кто создал ревизию |
+| `created_at` | TIMESTAMPTZ | — |
+| `change_reason` | TEXT | Причина изменения (для корректировок) |
+
+PK: `(row_id, revision)`.
 
 ---
 
-### `transport_requests` — Транспортные заявки
+### `journal_row_confirmations` — Подтверждения строк
 
 | Колонка | Тип | Описание |
 |---------|-----|---------|
-| `id` | SERIAL PK | — |
-| `department` | VARCHAR(255) NOT NULL | Отделение |
-| `initiator` | VARCHAR(255) NOT NULL | Инициатор |
-| `position` | VARCHAR(255) | Должность |
-| `phone` | VARCHAR(50) | Телефон |
-| `submission_date` | DATE NOT NULL | Дата подачи |
-| `submission_time` | TIME NOT NULL | Время подачи |
-| `route_from` | VARCHAR(255) NOT NULL | Откуда |
-| `route_to` | VARCHAR(255) NOT NULL | Куда |
-| `purpose` | TEXT NOT NULL | Цель |
-| `passenger_count` | INTEGER NOT NULL | Число пассажиров |
-| `special_notes` | TEXT | Особые пожелания |
-| `vehicle_id` | INTEGER → `vehicles(id)` | Назначенный автомобиль |
-| `status` | VARCHAR(50) DEFAULT `'new'` | Статус |
-| `comment` | TEXT | Комментарий |
-| `created_at` | TIMESTAMP | — |
+| `id` | BIGSERIAL PK | — |
+| `row_id` | INTEGER → `journal_rows(id)` | Строка |
+| `row_revision` | INTEGER | Ревизия, которую подтвердили (FK → `journal_row_revisions`) |
+| `signer_user_id` | INTEGER → `users(id)` ON DELETE RESTRICT | Подписавший |
+| `signer_full_name` | VARCHAR(255) NOT NULL | Снимок ФИО |
+| `signer_position` | VARCHAR(255) | Снимок должности в отделении |
+| `department_name` | VARCHAR(255) NOT NULL | Снимок названия отделения |
+| `journal_title` | VARCHAR(255) NOT NULL | Снимок названия журнала |
+| `confirmed_at` | TIMESTAMPTZ NOT NULL | Дата и время подтверждения |
+| `method` | VARCHAR(50) DEFAULT `password_confirmation` | Метод аутентификации |
+| `status` | VARCHAR(20) CHECK (`active`, `voided`) DEFAULT `active` | Статус |
+| `voided_at` | TIMESTAMPTZ | Дата аннулирования |
+| `voided_by` | INTEGER → `users(id)` ON DELETE SET NULL | Кто аннулировал |
+| `void_reason` | TEXT | Причина аннулирования |
+| `idempotency_key` | VARCHAR(255) UNIQUE | Защита от дублей |
+
+Уникальный индекс: `(row_id) WHERE status = 'active'` — не более одного активного подтверждения.
 
 ---
 
-### `vehicles` — Автомобили
+### `journal_audit_events` — Аудит журналов
 
 | Колонка | Тип | Описание |
 |---------|-----|---------|
-| `id` | SERIAL PK | — |
-| `make` | VARCHAR NOT NULL | Марка |
-| `model` | VARCHAR NOT NULL | Модель |
-| `license_plate` | VARCHAR NOT NULL | Гос. номер |
-| `driver` | VARCHAR | Водитель |
-| `created_at` | TIMESTAMP | — |
+| `id` | BIGSERIAL PK | — |
+| `object_type` | VARCHAR(50) | `journal`, `row`, `access`, `employee`, `import`, … |
+| `object_id` | VARCHAR(100) | ID объекта |
+| `action` | VARCHAR(50) | Действие (`rename`, `publish`, `archive`, `confirm`, `correction`, …) |
+| `actor_id` | INTEGER → `users(id)` ON DELETE SET NULL | Кто совершил действие |
+| `reason` | TEXT | Причина (для корректировок) |
+| `prev_data` | JSONB | Предыдущие данные |
+| `new_data` | JSONB | Новые данные |
+| `created_at` | TIMESTAMPTZ | — |
 
 ---
 
-### `organization_profile` — Профиль организации
+### Прочие таблицы (без изменений)
 
-Singleton-таблица (всегда одна строка, `id = 1`).
-
-| Колонка | Тип | Описание |
-|---------|-----|---------|
-| `id` | INTEGER PK DEFAULT 1 | Всегда `1` |
-| `logo_url` | TEXT | Путь к логотипу |
-| `hero_image_url` | TEXT | Путь к hero-изображению |
-| `updated_at` | TIMESTAMP | — |
-
----
-
-### `calibration_schedule` — График поверок МКС и ПИ
-
-| Колонка | Тип | Описание |
-|---------|-----|---------|
-| `id` | SERIAL PK | — |
-| `commissioning_date` | DATE | Дата ввода в эксплуатацию |
-| `nomenclature` | TEXT NOT NULL | Номенклатура (наименование) прибора |
-| `name` | TEXT | Дополнительное название |
-| `type` | TEXT | Тип прибора |
-| `inventory_number` | TEXT | Инвентарный номер |
-| `serial_number` | TEXT | Заводской номер |
-| `manufacture_date` | DATE | Дата выпуска |
-| `department_id` | INTEGER → `departments(id)` ON DELETE SET NULL | Отделение |
-| `quantity` | INTEGER | Количество |
-| `verification_kind` | TEXT | Поверка / МКС / ПИ |
-| `current_verification_date` | DATE | Дата действующей поверки |
-| `next_verification_date` | DATE | Дата следующей поверки |
-| `note` | TEXT | Примечание |
-| `created_at` | TIMESTAMP | — |
-
-Индексы: `department_id`, `next_verification_date`.
+Таблицы `announcements`, `document_folders`, `documents`, `incident_view_types`, `incident_types`, `incident_view_type_incident_types`, `incidents`, `urgency_levels`, `it_requests`, `ahch_requests`, `metrologist_requests`, `transport_requests`, `vehicles`, `organization_profile`, `calibration_schedule` — структура не изменилась. См. предыдущую версию спецификации или файлы `backend/sql/`.
 
 ---
 
@@ -416,14 +383,39 @@ Singleton-таблица (всегда одна строка, `id = 1`).
 
 **Аутентификация:** JWT Bearer Token в заголовке `Authorization: Bearer <token>`.
 
+**JWT-payload (`AuthPayload`):**
+```ts
+{
+  userId: number;
+  role: string;
+  authVersion: number;     // сравнивается с users.auth_version при каждом запросе
+  permissions: RolePermissions;
+}
+```
+
+При каждом запросе `requireAuth` дополнительно проверяет в БД:
+- `users.is_active` — аккаунт не заблокирован
+- `users.auth_version` — сессия не отозвана (инкрементируется при сбросе пароля)
+- `users.must_change_password` — помещается в `req.user`
+
 **Middleware-функции** (`auth.middleware.ts`):
 
 | Функция | Описание |
 |---------|---------|
-| `requireAuth` | Проверяет валидность JWT, добавляет `req.user` |
+| `requireAuth` | Проверяет JWT, проверяет `is_active` и `auth_version` в БД, добавляет `req.user` |
+| `requirePasswordChanged` | 403 если `req.user.mustChangePassword === true` |
 | `requireRoles(['role1', 'role2'])` | Проверяет `req.user.role` по списку (OR) |
 | `requirePermission('flagName')` | Проверяет один булев флаг из `roles` |
 | `requireAnyPermission(['f1', 'f2'])` | Хотя бы один флаг должен быть `true` |
+
+**Временный пароль:**
+- При создании сотрудника администратором генерируется временный пароль
+- `must_change_password = TRUE` → пользователь при входе видит страницу смены пароля
+- После смены пароля: `must_change_password = FALSE`, `auth_version += 1` (все старые сессии аннулируются)
+
+**Привилегированные роли:**
+- Регистрация через публичный `POST /api/auth/register` ограничена непривилегированными ролями
+- Создание пользователей с любой ролью — только через `POST /api/users` (только для `canManageReferences`)
 
 **RBAC-хелперы** (`rbac.middleware.ts`) — готовые проверки:
 - `requireAdminForReferences` — `canManageReferences`
@@ -448,13 +440,15 @@ Singleton-таблица (всегда одна строка, `id = 1`).
 | POST | `/api/auth/register` | Публичный | `{username, full_name, role, password}` |
 | GET | `/api/auth/roles` | Публичный | — |
 | GET | `/api/auth/me` | `requireAuth` | — |
+| POST | `/api/auth/change-password` | `requireAuth` | `{currentPassword, newPassword}` |
 
 ### Пользователи
-| Метод | Путь | Доступ |
-|-------|------|--------|
-| GET | `/api/users` | `canManageReferences` |
-| PUT | `/api/users/:id` | `canManageReferences` |
-| DELETE | `/api/users/:id` | `canManageReferences` |
+| Метод | Путь | Доступ | Описание |
+|-------|------|--------|---------|
+| GET | `/api/users` | `canManageReferences` | Список пользователей |
+| POST | `/api/users` | `canManageReferences` | Создать пользователя с любой ролью |
+| PUT | `/api/users/:id` | `canManageReferences` | Обновить пользователя |
+| DELETE | `/api/users/:id` | `canManageReferences` | Удалить пользователя |
 
 ### Привязка Max-аккаунта
 | Метод | Путь | Доступ |
@@ -464,6 +458,56 @@ Singleton-таблица (всегда одна строка, `id = 1`).
 | POST | `/api/users/me/max-link/verify` | `requireAuth` |
 | DELETE | `/api/users/me/max-link` | `requireAuth` |
 | PATCH | `/api/users/me/max-link/notifications` | `requireAuth` |
+
+### Сотрудники
+| Метод | Путь | Доступ | Описание |
+|-------|------|--------|---------|
+| GET | `/api/employees` | `canManageEmployees` | Список сотрудников с профилями и отделениями |
+| POST | `/api/employees` | `canManageEmployees` | Создать сотрудника (генерирует логин и временный пароль) |
+| PATCH | `/api/employees/:id` | `canManageEmployees` | Обновить профиль (отделения, должность, активность) |
+| POST | `/api/employees/:id/reset-password` | `canManageEmployees` | Сброс пароля (генерирует новый временный) |
+| POST | `/api/employees/import` | `canManageEmployees` | Пакетный импорт из Excel |
+| GET | `/api/employees/departments` | `requireAuth` | Отделения с привязанными сотрудниками (для головной медсестры) |
+
+### Допуск к журналам
+| Метод | Путь | Доступ | Описание |
+|-------|------|--------|---------|
+| GET | `/api/journal-access/departments` | `canManageJournalAccess` | Список отделений с сотрудниками |
+| GET | `/api/journal-access/departments/:deptId/employees` | `canManageJournalAccess` | Сотрудники отделения с флагом допуска |
+| PATCH | `/api/journal-access/departments/:deptId/employees/:userId` | `canManageJournalAccess` | Выдать/отозвать допуск |
+
+### Журналы
+| Метод | Путь | Доступ | Описание |
+|-------|------|--------|---------|
+| GET | `/api/journals?scope=` | `requireAuth` + `requirePasswordChanged` | Список журналов (`scope`: `available`, `own`, `all`) |
+| POST | `/api/journals` | `canManageOwnJournals` ИЛИ `canManageAllJournals` | Создать черновик журнала |
+| GET | `/api/journals/:id` | `requireAuth` + `requirePasswordChanged` | Получить журнал с колонками |
+| PATCH | `/api/journals/:id` | `canManageOwnJournals` ИЛИ `canManageAllJournals` | Переименовать журнал |
+| PUT | `/api/journals/:id/columns` | `canManageOwnJournals` ИЛИ `canManageAllJournals` | Изменить колонки (только до публикации) |
+| POST | `/api/journals/:id/publish` | `canManageOwnJournals` ИЛИ `canManageAllJournals` | Опубликовать журнал |
+| POST | `/api/journals/:id/archive` | `canManageOwnJournals` ИЛИ `canManageAllJournals` | Архивировать журнал |
+| POST | `/api/journals/:id/restore` | `canManageOwnJournals` ИЛИ `canManageAllJournals` | Восстановить из архива |
+
+**Условия публикации:** минимум одна data-колонка, ровно одна confirmation-колонка, минимум одна строка.  
+**После публикации схема колонок заморожена** (`first_published_at IS NOT NULL`).
+
+### Строки журнала
+| Метод | Путь | Доступ | Описание |
+|-------|------|--------|---------|
+| GET | `/api/journals/:id/rows` | `requireAuth` + `requirePasswordChanged` | Список строк с подтверждениями; пагинация `?page=&limit=` |
+| POST | `/api/journals/:id/rows` | `canManageOwnJournals` ИЛИ `canManageAllJournals` | Добавить строку |
+| PATCH | `/api/journals/:id/rows/:rowId` | `canManageOwnJournals` ИЛИ `canManageAllJournals` | Редактировать строку (только без активного подтверждения) |
+| DELETE | `/api/journals/:id/rows/:rowId` | `canManageOwnJournals` ИЛИ `canManageAllJournals` | Мягкое удаление (нельзя удалить строку с историей подтверждений) |
+| POST | `/api/journals/:id/rows/:rowId/copy` | `canManageOwnJournals` ИЛИ `canManageAllJournals` | Скопировать строку (1–365 копий, опционально сдвиг дат) |
+| POST | `/api/journals/:id/rows/:rowId/confirm` | `requireAuth` + `requirePasswordChanged` | Подтвердить строку (требует пароль + опционально `editableValues`) |
+| POST | `/api/journals/:id/rows/:rowId/corrections` | `canManageOwnJournals` ИЛИ `canManageAllJournals` | Корректировка подтверждённой строки (аннулирует подтверждение) |
+| GET | `/api/journals/:id/rows/:rowId/history` | `canManageOwnJournals` ИЛИ `canManageAllJournals` | История ревизий и подтверждений |
+
+**Логика `confirm` с `editableValues`:**
+1. Проверяет пароль пользователя (bcrypt)
+2. Если переданы `editableValues` — создаёт новую ревизию строки с обновлёнными editable-полями
+3. Создаёт запись подтверждения, указывающую на актуальную ревизию
+4. Поддерживает идемпотентность через `idempotencyKey`
 
 ### Объявления
 | Метод | Путь | Доступ |
@@ -650,6 +694,7 @@ JWT_SECRET=...
 JWT_EXPIRES_IN=1d
 MAX_BOT_TOKEN=...
 CORS_ORIGIN=https://your-domain.ru
+JOURNAL_COPY_MAX_ROWS=365   # максимум копий за раз (по умолчанию 365)
 ```
 
 ---
@@ -674,13 +719,9 @@ node dist/server.js
 pm2 start dist/server.js --name medportal-backend
 ```
 
-### Применение миграций
+### Схема БД
 
-```bash
-psql -U postgres -d medportal -f backend/sql/001_create_users.sql
-psql -U postgres -d medportal -f backend/sql/002_create_announcements.sql
-# ... до 023_calibration_schedule.sql
-```
+Схема создаётся автоматически при первом запуске сервера — `ensureAuthTables()` создаёт все таблицы и добавляет отсутствующие колонки. Вручную применять SQL-файлы не нужно.
 
 ### nginx (проксирование API и статики)
 

@@ -1,6 +1,20 @@
 import type { UserListItem } from '../types/common';
 import { http } from '../api/http';
 
+export type CreateUserPayload = {
+  username: string;
+  fullName: string;
+  role: string;
+  password: string;
+};
+
+export async function createUser(payload: CreateUserPayload, token: string): Promise<UserListItem> {
+  const { data } = await http.post<UserListItem>('/users', payload, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return data;
+}
+
 export async function fetchUsers(token: string): Promise<UserListItem[]> {
   const { data } = await http.get<UserListItem[]>('/users', {
     headers: { Authorization: `Bearer ${token}` },

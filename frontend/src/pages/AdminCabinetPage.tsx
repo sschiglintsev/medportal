@@ -18,6 +18,7 @@ import { useMemo, useState } from 'react';
 
 import { IncidentsRegistryPanel } from '../components/IncidentsRegistryPanel/IncidentsRegistryPanel';
 import { AdminAnnouncementsPage } from './AdminAnnouncementsPage';
+import { AdminEmployeesPage } from './AdminEmployeesPage';
 import { AdminDepartmentsPage } from './AdminDepartmentsPage';
 import { AdminDocumentsPage } from './AdminDocumentsPage';
 import { AdminIncidentTypesPage } from './AdminIncidentTypesPage';
@@ -47,6 +48,7 @@ type Section =
   | 'calibration-schedule'
   | 'incidents'
   | 'users'
+  | 'employees'
   | 'organization'
   | 'analytics';
 
@@ -64,6 +66,7 @@ const SECTION_TITLES: Record<Section, string> = {
   'calibration-schedule': 'График поверок МКС и ПИ',
   incidents: 'Нежелательные события',
   users: 'Пользователи',
+  employees: 'Сотрудники',
   organization: 'Профиль организации',
   analytics: 'Аналитика',
 };
@@ -99,6 +102,8 @@ export function AdminCabinetPage() {
         return <AnalyticsPage />;
       case 'users':
         return <AdminUsersPage />;
+      case 'employees':
+        return <AdminEmployeesPage />;
       case 'organization':
         return <AdminOrganizationPage />;
       default:
@@ -130,6 +135,7 @@ export function AdminCabinetPage() {
               { key: 'analytics', icon: <BarChartOutlined />, label: 'Аналитика' },
               { type: 'divider' },
               { key: 'users', icon: <TeamOutlined />, label: 'Пользователи' },
+              { key: 'employees', icon: <TeamOutlined />, label: 'Сотрудники' },
               { key: 'organization', icon: <SettingOutlined />, label: 'Профиль организации' },
             ]}
           />
