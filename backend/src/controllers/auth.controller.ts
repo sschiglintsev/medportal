@@ -266,11 +266,15 @@ export async function changePassword(
 
     const newPassword = body.newPassword;
 
-    // Минимальная длина нового пароля — 15 символов (проектная политика)
-    if (newPassword.length < 15) {
+    // Сотрудники (role='employee') — упрощённые требования: минимум 8 символов, без ограничений по сложности
+    // Все остальные роли — минимум 15 символов (политика безопасности)
+    const isEmployee = req.user!.role === 'employee';
+    const minPasswordLength = isEmployee ? 8 : 15;
+
+    if (newPassword.length < minPasswordLength) {
       res.status(422).json({
         code: 'VALIDATION_ERROR',
-        message: 'New password must be at least 15 characters',
+        message: `New password must be at least ${minPasswordLength} characters`,
       });
       return;
     }

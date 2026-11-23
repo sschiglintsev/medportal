@@ -21,6 +21,7 @@ type FormValues = {
 export function ChangePasswordPage() {
   const user = useAppStore((s) => s.user);
   const token = useAppStore((s) => s.token);
+  const minPasswordLength = user?.role === 'employee' ? 8 : 15;
   const setAuth = useAppStore((s) => s.setAuth);
   const clearAuth = useAppStore((s) => s.clearAuth);
   const [loading, setLoading] = useState(false);
@@ -79,10 +80,10 @@ export function ChangePasswordPage() {
 
           <Form.Item
             name="newPassword"
-            label="Новый пароль (минимум 15 символов)"
+            label={`Новый пароль (минимум ${minPasswordLength} символов)`}
             rules={[
               { required: true, message: 'Введите новый пароль' },
-              { min: 15, message: 'Минимум 15 символов' },
+              { min: minPasswordLength, message: `Минимум ${minPasswordLength} символов` },
             ]}
           >
             <Input.Password autoComplete="new-password" />

@@ -36,6 +36,7 @@ import {
   parseEmployeesSheet,
   readEmployeesExcel,
 } from '../Core/utils/parseEmployeesExcel';
+import type { ParsedEmployeeRow } from '../Core/utils/parseEmployeesExcel';
 import type { ImportPreviewResponse } from '../Core/services/employee.service';
 import './AdminEmployeesPage.scss';
 
@@ -80,6 +81,10 @@ export function AdminEmployeesPage() {
   const [importCreds, setImportCreds] = useState<NewCredential[]>([]);
   const [workbook, setWorkbook] = useState<ReturnType<typeof readEmployeesExcel> | null>(null);
   const [selectedSheet, setSelectedSheet] = useState<string>('');
+  /** Кэш распознанных строк для повторной отправки с исправлениями */
+  const [parsedRowsCache, setParsedRowsCache] = useState<ParsedEmployeeRow[]>([]);
+  /** Ручные исправления: sourceRow → departmentId из БД */
+  const [deptCorrections, setDeptCorrections] = useState<Record<number, number>>({});
 
   const loadEmployees = useCallback(async () => {
     setLoading(true);
@@ -198,22 +203,18 @@ export function AdminEmployeesPage() {
     setSelectedSheet(wb.SheetNames[0] ?? '');
     setImportStep(0);
     setImportPreviewData(null);
+    setParsedRowsCache([]);
+    setDeptCorrections({});
     setImportOpen(true);
     return false; // Не загружаем автоматически
   };
 
-  const handleImportPreview = async () => {
-    if (!workbook || !selectedSheet) return;
-    const result = parseEmployeesSheet(workbook, selectedSheet);
-    if (result.errors.length > 0 && result.rows.length === 0) {
-      void message.error('Ошибки в файле: ' + result.errors.slice(0, 3).join('; '));
-      return;
-    }
-
+  /** Отправляет rows на preview. items — уже с применёнными исправлениями. */
+  const runPreview = async (items: ParsedEmployeeRow[]) => {
     setImportLoading(true);
     try {
       const preview = await importPreview(
-        { sourceSheet: selectedSheet, items: result.rows },
+        { sourceSheet: selectedSheet, items },
         token,
       );
       setImportPreviewData(preview);
@@ -225,6 +226,32 @@ export function AdminEmployeesPage() {
     } finally {
       setImportLoading(false);
     }
+  };
+
+  const handleImportPreview = async () => {
+    if (!workbook || !selectedSheet) return;
+    const result = parseEmployeesSheet(workbook, selectedSheet);
+    if (result.errors.length > 0 && result.rows.length === 0) {
+      void message.error('Ошибки в файле: ' + result.errors.slice(0, 3).join('; '));
+      return;
+    }
+    setParsedRowsCache(result.rows);
+    setDeptCorrections({});
+    await runPreview(result.rows);
+  };
+
+  /** Повторная проверка с применёнными ручными исправлениями отделений */
+  const handleResubmitWithCorrections = async () => {
+    if (!parsedRowsCache.length) return;
+    const correctedItems = parsedRowsCache.map((row) => {
+      const correctedDeptId = deptCorrections[row.sourceRow];
+      if (correctedDeptId) {
+        const dept = departments.find((d) => d.id === correctedDeptId);
+        return { ...row, departmentName: dept?.name ?? row.departmentName };
+      }
+      return row;
+    });
+    await runPreview(correctedItems);
   };
 
   const handleImportCommit = async () => {
@@ -279,13 +306,30 @@ export function AdminEmployeesPage() {
     { title: 'Код', dataIndex: 'employee_code', key: 'code' },
     { title: 'Роль', dataIndex: 'role_title', key: 'role' },
     {
-      title: 'Отделения',
+      title: 'Отделение',
       key: 'depts',
-      render: (_: unknown, record: EmployeeItem) =>
-        record.departments
-          .filter((d) => d.is_active)
-          .map((d) => `${d.name} (${d.position})`)
-          .join('; ') || '—',
+      render: (_: unknown, record: EmployeeItem) => {
+        const active = record.departments.filter((d) => d.is_active);
+        if (!active.length) return <Text type="secondary">—</Text>;
+        return (
+          <Space direction="vertical" size={0}>
+            {active.map((d) => <div key={d.id}>{d.name}</div>)}
+          </Space>
+        );
+      },
+    },
+    {
+      title: 'Должность',
+      key: 'positions',
+      render: (_: unknown, record: EmployeeItem) => {
+        const active = record.departments.filter((d) => d.is_active);
+        if (!active.length) return <Text type="secondary">—</Text>;
+        return (
+          <Space direction="vertical" size={0}>
+            {active.map((d) => <div key={d.id}>{d.position}</div>)}
+          </Space>
+        );
+      },
     },
     {
       title: 'Действия',
@@ -306,7 +350,6 @@ export function AdminEmployeesPage() {
   return (
     <div className="admin-employees-page">
       <div className="admin-employees-page__toolbar">
-        <Title level={4}>Сотрудники</Title>
         <Space>
           <Input.Search
             placeholder="Поиск по ФИО, логину, коду..."
@@ -476,27 +519,73 @@ export function AdminEmployeesPage() {
               size="small"
               style={{ marginTop: 12 }}
               columns={[
-                { title: '#', dataIndex: 'sourceRow', key: 'row', width: 50 },
-                { title: 'ФИО', dataIndex: 'fullName', key: 'name' },
-                { title: 'Отделение', dataIndex: 'departmentName', key: 'dept' },
+                { title: '#', dataIndex: 'sourceRow', key: 'row', width: 46 },
+                { title: 'ФИО', dataIndex: 'fullName', key: 'name', width: 220 },
+                {
+                  title: 'Отделение',
+                  key: 'dept',
+                  render: (_: unknown, r: { sourceRow: number; status: string; departmentName: string; message?: string }) => {
+                    const isDeptError = r.status === 'error' && (r.message ?? '').includes('не найден');
+                    if (isDeptError) {
+                      return (
+                        <Select
+                          placeholder="Выберите отделение"
+                          style={{ width: '100%', minWidth: 200 }}
+                          value={deptCorrections[r.sourceRow]}
+                          onChange={(id: number) =>
+                            setDeptCorrections((prev) => ({ ...prev, [r.sourceRow]: id }))
+                          }
+                          options={departments.map((d) => ({ label: d.name, value: d.id }))}
+                          showSearch
+                          filterOption={(input, opt) =>
+                            (opt?.label as string ?? '').toLowerCase().includes(input.toLowerCase())
+                          }
+                          size="small"
+                        />
+                      );
+                    }
+                    return r.departmentName;
+                  },
+                },
                 { title: 'Должность', dataIndex: 'position', key: 'pos' },
                 {
                   title: 'Статус',
                   key: 'status',
-                  render: (_: unknown, r: { status: string; message?: string }) => (
-                    <Space>
-                      <Tag color={r.status === 'new_user' ? 'blue' : r.status === 'error' ? 'red' : r.status === 'conflict' ? 'orange' : 'default'}>
-                        {r.status}
-                      </Tag>
-                      {r.message && <Text type="secondary" style={{ fontSize: 11 }}>{r.message}</Text>}
-                    </Space>
-                  ),
+                  width: 160,
+                  render: (_: unknown, r: { sourceRow: number; status: string; message?: string }) => {
+                    const isDeptError = r.status === 'error' && (r.message ?? '').includes('не найден');
+                    const isCorrected = isDeptError && deptCorrections[r.sourceRow];
+                    return (
+                      <Space direction="vertical" size={0}>
+                        <Tag color={
+                          isCorrected ? 'processing' :
+                          r.status === 'new_user' ? 'blue' :
+                          r.status === 'existing_user' ? 'green' :
+                          r.status === 'error' ? 'red' :
+                          r.status === 'conflict' ? 'orange' : 'default'
+                        }>
+                          {isCorrected ? 'исправлено ↻' : r.status}
+                        </Tag>
+                        {r.message && !isDeptError && (
+                          <Text type="secondary" style={{ fontSize: 11 }}>{r.message}</Text>
+                        )}
+                      </Space>
+                    );
+                  },
                 },
               ]}
-              pagination={{ pageSize: 10 }}
+              pagination={{ pageSize: 15, showSizeChanger: false }}
             />
-            <Space style={{ marginTop: 16 }}>
+            <Space style={{ marginTop: 16 }} wrap>
               <Button onClick={() => setImportStep(0)}>Назад</Button>
+              {Object.keys(deptCorrections).length > 0 && (
+                <Button
+                  loading={importLoading}
+                  onClick={() => void handleResubmitWithCorrections()}
+                >
+                  Проверить снова с исправлениями ({Object.keys(deptCorrections).length})
+                </Button>
+              )}
               <Button
                 type="primary"
                 disabled={!importPreviewData.canCommit}

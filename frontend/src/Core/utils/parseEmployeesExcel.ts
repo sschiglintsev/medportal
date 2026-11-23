@@ -4,10 +4,10 @@ import * as XLSX from 'xlsx';
  * Поддерживаемые заголовки колонок.
  * Колонка ФИО поддерживает синоним FIO (явно задокументирован).
  */
-const FIO_HEADERS = new Set(['фио', 'fio', 'ф.и.о.', 'full_name']);
-const DEPT_HEADERS = new Set(['отделение', 'отдел', 'department']);
+const FIO_HEADERS = new Set(['фио', 'fio', 'ф.и.о.', 'full_name', 'сотрудник', 'работник']);
+const DEPT_HEADERS = new Set(['отделение', 'отдел', 'department', 'подразделение', 'структурное подразделение']);
 const POS_HEADERS = new Set(['должность', 'position', 'prof']);
-const CODE_HEADERS = new Set(['код сотрудника', 'код', 'employee_code', 'code', 'emplcode']);
+const CODE_HEADERS = new Set(['код сотрудника', 'код', 'employee_code', 'code', 'emplcode', 'табельный номер', 'таб. номер', 'таб.номер', 'табельный']);
 
 export type ParsedEmployeeRow = {
   sourceRow: number;
