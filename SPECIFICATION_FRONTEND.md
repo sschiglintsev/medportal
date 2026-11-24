@@ -36,6 +36,7 @@
 | `react-router-dom` | 7 | Клиентский роутинг |
 | `dayjs` | — | Даты (используется Ant Design DatePicker) |
 | `xlsx` | — | Импорт и экспорт Excel |
+| `jspdf` + `html2canvas` | — | Скачивание PDF температурного листа (A4 landscape) |
 | `chart.js` + `react-chartjs-2` | — | Графики на странице аналитики |
 | `sass` | — | SCSS-препроцессор |
 
@@ -103,6 +104,10 @@ frontend/src/
 │   ├── EmployeeCabinetPage.scss
 │   ├── HeadNurseCabinetPage.tsx     ← Кабинет главной медсестры
 │   ├── HeadNurseCabinetPage.scss
+│   ├── TempSheetsPage.tsx           ← Температурный лист (список/просмотр)
+│   ├── TempSheetEditorPage.tsx      ← Заполнение таблицы
+│   ├── TempSheetAccessPage.tsx      ← Выдача доступа сотрудникам
+│   ├── TempSheetsPage.scss
 │   ├── ChangePasswordPage.tsx       ← Экран обязательной смены пароля
 │   ├── ChangePasswordPage.scss
 │   ├── CalibrationSchedulePage.tsx  ← График поверок (кабинет метролога и админа)
@@ -611,6 +616,17 @@ frontend/src/
 
 Используется минимально. Справочники загружаются в локальный стейт страниц.  
 **Важно:** список отделений в `AdminEmployeesPage` загружается напрямую через `fetchDepartments()`, а не из стора — стор отделений заполняется только на `HomePage` через `useReferences()`.
+
+---
+
+## 9a. Температурный лист
+
+- Меню: кабинет главной медсестры (`HeadNurseCabinetPage`), сотрудник (при выданном доступе), администратор.
+- `TempSheetsPage` — список, поиск, фильтр отделения (менеджер), создание/открытие текущего листа ребёнка×отделение, просмотр с ломаной температуры, PDF/Excel/печать.
+- `TempSheetEditorPage` — редактирование в таблице, автосохранение полей (очередь запросов вкладки), очистка ячейки/колонки/таблицы, 15 колонок + 19 строк по бланку.
+- `TempSheetAccessPage` — выдача/отзыв доступа сотрудникам.
+- Общая форма: `components/TempSheetForm` + `Core/utils/tempSheetForm.ts` / `tempSheetExport.ts`.
+- Шаблон Word: `docs/templates/Температурный лист.docx` (в форме 15 колонок записей вместо 18 в исходнике).
 
 ---
 

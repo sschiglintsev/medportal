@@ -168,6 +168,8 @@ export type RolePermissions = {
   canManageOwnJournals?: boolean;
   canManageAllJournals?: boolean;
   canManageJournalAccess?: boolean;
+  // Модуль «Температурный лист» (миграция 028)
+  canManageTempSheet?: boolean;
 };
 
 export type RoleOption = {
@@ -319,4 +321,70 @@ export type DepartmentAccessEmployee = {
   has_access: boolean;
   granted_at?: string;
   revoked_at?: string;
+};
+
+// ─────────────────────────────────────────────────────────────
+// Температурный лист
+// ─────────────────────────────────────────────────────────────
+
+export type TemperatureBand =
+  | 'above41' | '40_409' | '39_399' | '38_389'
+  | '37_379' | '36_369' | '35_359' | 'below35';
+
+export const TEMP_BAND_LABELS: Record<TemperatureBand, string> = {
+  above41: 'выше 41',
+  '40_409': '40-40,9',
+  '39_399': '39-39,9',
+  '38_389': '38-38,9',
+  '37_379': '37-37,9',
+  '36_369': '36-36,9',
+  '35_359': '35 -35,9',
+  below35:  'ниже 35',
+};
+
+export const TEMP_BAND_ORDER: TemperatureBand[] = [
+  'above41', '40_409', '39_399', '38_389',
+  '37_379', '36_369', '35_359', 'below35',
+];
+
+export type TempSheetColumnData = {
+  column_index: number;
+  stay_day: string | null;
+  observation_date: string | null;  // ISO date
+  observation_time: string | null;  // HH:MM
+  temperature_band: TemperatureBand | null;
+  respiratory_rate: string | null;
+  spo2: string | null;
+  weight_kg: string | null;
+  oral_fluid_ml: string | null;
+  parenteral_fluid_ml: string | null;
+  urine_volume_ml: string | null;
+  stool: string | null;
+};
+
+export type Patient = {
+  id: number;
+  full_name: string;
+  birth_date: string | null;  // ISO date
+};
+
+export type TempSheet = {
+  id: number;
+  patient_id: number;
+  patient_name: string;
+  birth_date: string | null;
+  department_id: number;
+  department_name: string;
+  height_cm: number | null;
+  created_at: string;
+  updated_at: string;
+  columns?: TempSheetColumnData[];
+  can_edit?: boolean;
+};
+
+export type TempSheetAccessUser = {
+  user_id: number;
+  full_name: string;
+  departments: string[] | null;
+  has_access: boolean;
 };

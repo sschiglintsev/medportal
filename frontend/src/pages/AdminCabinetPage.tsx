@@ -5,6 +5,7 @@ import {
   CarOutlined,
   ExperimentOutlined,
   FileTextOutlined,
+  HeartOutlined,
   HomeOutlined,
   NotificationOutlined,
   SettingOutlined,
@@ -32,6 +33,7 @@ import { CalibrationSchedulePage } from './CalibrationSchedulePage';
 import { AdminOrganizationPage } from './AdminOrganizationPage';
 import { AdminUsersPage } from './AdminUsersPage';
 import { AnalyticsPage } from './AnalyticsPage';
+import { TempSheetsPage } from './TempSheetsPage';
 import './AdminCabinetPage.scss';
 
 type Section =
@@ -49,6 +51,7 @@ type Section =
   | 'incidents'
   | 'users'
   | 'employees'
+  | 'temp-sheets'
   | 'organization'
   | 'analytics';
 
@@ -67,6 +70,7 @@ const SECTION_TITLES: Record<Section, string> = {
   incidents: 'Нежелательные события',
   users: 'Пользователи',
   employees: 'Сотрудники',
+  'temp-sheets': 'Температурный лист',
   organization: 'Профиль организации',
   analytics: 'Аналитика',
 };
@@ -104,6 +108,8 @@ export function AdminCabinetPage() {
         return <AdminUsersPage />;
       case 'employees':
         return <AdminEmployeesPage />;
+      case 'temp-sheets':
+        return <TempSheetsPage />;
       case 'organization':
         return <AdminOrganizationPage />;
       default:
@@ -136,6 +142,7 @@ export function AdminCabinetPage() {
               { type: 'divider' },
               { key: 'users', icon: <TeamOutlined />, label: 'Пользователи' },
               { key: 'employees', icon: <TeamOutlined />, label: 'Сотрудники' },
+              { key: 'temp-sheets', icon: <HeartOutlined />, label: 'Температурный лист' },
               { key: 'organization', icon: <SettingOutlined />, label: 'Профиль организации' },
             ]}
           />

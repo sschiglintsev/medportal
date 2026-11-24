@@ -17,6 +17,8 @@ export type RolePermissions = {
   canManageOwnJournals: boolean;
   canManageAllJournals: boolean;
   canManageJournalAccess: boolean;
+  // Модуль «Температурный лист» (миграция 028)
+  canManageTempSheet: boolean;
 };
 
 type RoleRow = {
@@ -36,6 +38,7 @@ type RoleRow = {
   can_manage_own_journals: boolean;
   can_manage_all_journals: boolean;
   can_manage_journal_access: boolean;
+  can_manage_temp_sheet: boolean;
   is_active: boolean;
 };
 
@@ -57,6 +60,7 @@ function mapRolePermissions(row: RoleRow): RolePermissions {
     canManageOwnJournals: row.can_manage_own_journals ?? false,
     canManageAllJournals: row.can_manage_all_journals ?? false,
     canManageJournalAccess: row.can_manage_journal_access ?? false,
+    canManageTempSheet: row.can_manage_temp_sheet ?? false,
   };
 }
 
@@ -91,6 +95,8 @@ async function ensureRolesSchema(client: PoolClient): Promise<void> {
   await client.query(`ALTER TABLE roles ADD COLUMN IF NOT EXISTS can_manage_own_journals BOOLEAN NOT NULL DEFAULT FALSE`);
   await client.query(`ALTER TABLE roles ADD COLUMN IF NOT EXISTS can_manage_all_journals BOOLEAN NOT NULL DEFAULT FALSE`);
   await client.query(`ALTER TABLE roles ADD COLUMN IF NOT EXISTS can_manage_journal_access BOOLEAN NOT NULL DEFAULT FALSE`);
+  // Колонка из миграции 028 — Температурный лист
+  await client.query(`ALTER TABLE roles ADD COLUMN IF NOT EXISTS can_manage_temp_sheet BOOLEAN NOT NULL DEFAULT FALSE`);
 
   // Если старая колонка name существует — убираем NOT NULL чтобы новые вставки не падали
   await client.query(`
@@ -253,6 +259,21 @@ async function upsertRoles(client: PoolClient): Promise<void> {
     SET can_access_cabinet = TRUE
     WHERE value = 'employee'
       AND can_access_cabinet = FALSE
+  `);
+
+  // Модуль «Температурный лист» (миграция 028) — выдаём роль-уровневый доступ
+  await client.query(`
+    UPDATE roles
+    SET can_manage_temp_sheet = TRUE
+    WHERE value IN ('head_nurse', 'administrator')
+  `);
+
+  // Если раньше появилась ошибочная роль senior_nurse — переносим пользователей и удаляем роль
+  await client.query(`
+    UPDATE users SET role = 'head_nurse' WHERE role = 'senior_nurse'
+  `);
+  await client.query(`
+    DELETE FROM roles WHERE value = 'senior_nurse'
   `);
 }
 
@@ -560,6 +581,72 @@ async function ensureJournalTables(client: PoolClient): Promise<void> {
   await client.query(`CREATE INDEX IF NOT EXISTS idx_audit_actor  ON journal_audit_events (actor_id, created_at)`);
 }
 
+async function ensureTempSheetTables(client: PoolClient): Promise<void> {
+  // ── Миграция 028: Температурный лист ──────────────────────────────────────
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS patients (
+      id         SERIAL PRIMARY KEY,
+      full_name  VARCHAR(255) NOT NULL,
+      birth_date DATE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await client.query(`CREATE INDEX IF NOT EXISTS idx_patients_name ON patients (full_name)`);
+
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS temperature_sheets (
+      id            SERIAL PRIMARY KEY,
+      patient_id    INTEGER NOT NULL REFERENCES patients(id) ON DELETE RESTRICT,
+      department_id INTEGER NOT NULL REFERENCES departments(id) ON DELETE RESTRICT,
+      height_cm     NUMERIC(5,1),
+      created_by    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      CONSTRAINT uq_sheet_patient_dept UNIQUE (patient_id, department_id)
+    )
+  `);
+  await client.query(`CREATE INDEX IF NOT EXISTS idx_temp_sheets_patient ON temperature_sheets (patient_id)`);
+  await client.query(`CREATE INDEX IF NOT EXISTS idx_temp_sheets_dept    ON temperature_sheets (department_id)`);
+
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS temperature_sheet_columns (
+      id                   SERIAL PRIMARY KEY,
+      sheet_id             INTEGER NOT NULL REFERENCES temperature_sheets(id) ON DELETE CASCADE,
+      column_index         SMALLINT NOT NULL CHECK (column_index BETWEEN 1 AND 15),
+      stay_day             VARCHAR(100),
+      observation_date     DATE,
+      observation_time     TIME,
+      temperature_band     VARCHAR(20)
+                           CHECK (temperature_band IN
+                             ('above41','40_409','39_399','38_389',
+                              '37_379','36_369','35_359','below35')),
+      respiratory_rate     VARCHAR(20),
+      spo2                 VARCHAR(20),
+      weight_kg            VARCHAR(20),
+      oral_fluid_ml        VARCHAR(20),
+      parenteral_fluid_ml  VARCHAR(20),
+      urine_volume_ml      VARCHAR(20),
+      stool                VARCHAR(500),
+      CONSTRAINT uq_sheet_column UNIQUE (sheet_id, column_index)
+    )
+  `);
+  await client.query(`CREATE INDEX IF NOT EXISTS idx_tsc_sheet ON temperature_sheet_columns (sheet_id)`);
+
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS temp_sheet_user_access (
+      id          SERIAL PRIMARY KEY,
+      user_id     INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+      is_active   BOOLEAN NOT NULL DEFAULT TRUE,
+      granted_by  INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      granted_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      revoked_by  INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      revoked_at  TIMESTAMPTZ
+    )
+  `);
+  await client.query(`CREATE INDEX IF NOT EXISTS idx_tsua_user ON temp_sheet_user_access (user_id, is_active)`);
+}
+
 export async function ensureAuthTables(): Promise<void> {
   if (rolesTableReady) {
     return;
@@ -573,6 +660,7 @@ export async function ensureAuthTables(): Promise<void> {
     await migrateUsersTable(client);
     await ensureEmployeeTables(client);
     await ensureJournalTables(client);
+    await ensureTempSheetTables(client);
   });
 
   rolesTableReady = true;
@@ -620,6 +708,7 @@ export async function getRoleByValue(
         COALESCE(can_manage_own_journals, FALSE)   AS can_manage_own_journals,
         COALESCE(can_manage_all_journals, FALSE)   AS can_manage_all_journals,
         COALESCE(can_manage_journal_access, FALSE) AS can_manage_journal_access,
+        COALESCE(can_manage_temp_sheet, FALSE)     AS can_manage_temp_sheet,
         is_active
       FROM roles
       WHERE value = $1

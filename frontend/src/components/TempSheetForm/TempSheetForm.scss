@@ -1,0 +1,216 @@
+.tsf {
+  background: #fff;
+  color: #000;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  line-height: 1.3;
+
+  &__title {
+    text-align: center;
+    font-weight: 700;
+    font-size: 16px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    letter-spacing: 0.02em;
+  }
+
+  &__header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    font-size: 14px;
+  }
+
+  &__underline {
+    border-bottom: 1px solid #000;
+    padding: 0 4px;
+    font-weight: 600;
+  }
+
+  &__dept {
+    color: #555;
+    font-size: 13px;
+  }
+
+  &__height-input {
+    width: 72px;
+    border: none;
+    border-bottom: 1px solid #000;
+    font: inherit;
+    text-align: center;
+    padding: 0 2px;
+    background: transparent;
+
+    &:focus {
+      outline: none;
+      background: #f0f5ff;
+    }
+  }
+
+  &__table-wrap {
+    overflow-x: auto;
+  }
+
+  &__col-numbers {
+    display: grid;
+    grid-template-columns: 110px repeat(15, minmax(52px, 1fr));
+    margin-bottom: 2px;
+    font-size: 12px;
+    color: #888;
+    font-family: inherit;
+  }
+
+  &__col-num {
+    text-align: center;
+  }
+
+  &__table-relative {
+    position: relative;
+  }
+
+  &__table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    min-width: 980px;
+
+    th,
+    td {
+      border: 1px solid #000;
+      padding: 2px 3px;
+      vertical-align: middle;
+    }
+  }
+
+  &__label {
+    width: 110px;
+    text-align: left;
+    font-weight: 600;
+    background: #fafafa;
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    font-size: 12px;
+    line-height: 1.25;
+    padding: 3px 4px;
+    position: sticky;
+    left: 0;
+    z-index: 2;
+  }
+
+  &__cell {
+    text-align: center;
+    height: 22px;
+    overflow: hidden;
+    font-size: 13px;
+  }
+
+  &__cell--muted {
+    background: #f5f5f5;
+  }
+
+  &__cell--band {
+    height: 20px;
+    position: relative;
+  }
+
+  &__cell--marked {
+    background: #fff0f6;
+  }
+
+  &__cell--clickable {
+    cursor: pointer;
+
+    &:hover {
+      background: #e6f4ff;
+    }
+  }
+
+  &__mark {
+    color: #c41d7f;
+    font-size: 14px;
+    line-height: 1;
+  }
+
+  &__cell--input {
+    padding: 0;
+  }
+
+  &__input {
+    width: 100%;
+    height: 100%;
+    min-height: 22px;
+    border: none;
+    background: transparent;
+    text-align: center;
+    font: inherit;
+    font-size: 13px;
+    padding: 1px;
+
+    &:focus {
+      outline: 1px solid #4c4fea;
+      background: #f0f5ff;
+    }
+  }
+
+  &__row--temp-header .tsf__label {
+    background: #f0f0f0;
+  }
+
+  &__row--band .tsf__label {
+    padding-left: 8px;
+    font-weight: 500;
+  }
+
+  &__graph {
+    position: absolute;
+    left: 0;
+    top: 0;
+    pointer-events: none;
+    z-index: 1;
+    overflow: visible;
+  }
+
+  &--print,
+  &--view {
+    .tsf__label {
+      position: static;
+    }
+  }
+
+  &--print {
+    .tsf__dept {
+      display: none;
+    }
+  }
+}
+
+@media print {
+  .tsf {
+    font-size: 11px;
+
+    &__title {
+      font-size: 13px;
+    }
+
+    &__table {
+      min-width: 0;
+    }
+
+    &__label {
+      width: 80px;
+      font-size: 9px;
+      position: static;
+    }
+
+    &__cell {
+      font-size: 10px;
+    }
+
+    &__cell--band {
+      height: 14px;
+    }
+  }
+}

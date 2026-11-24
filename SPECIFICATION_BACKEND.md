@@ -175,8 +175,8 @@ backend/
 
 | `value` | `title` | Ключевые права |
 |---------|---------|----------------|
-| `administrator` | Администратор | `can_access_cabinet`, `can_access_admin_cabinet`, `can_manage_references`, `can_manage_documents`, `can_manage_employees`, `can_manage_all_journals`, `can_manage_journal_access` |
-| `head_nurse` | Главная медсестра | `can_access_cabinet`, `can_manage_own_journals`, `can_manage_journal_access` |
+| `administrator` | Администратор | `can_access_cabinet`, `can_access_admin_cabinet`, `can_manage_references`, `can_manage_documents`, `can_manage_employees`, `can_manage_all_journals`, `can_manage_journal_access`, `can_manage_temp_sheet` |
+| `head_nurse` | Главная медсестра | `can_access_cabinet`, `can_manage_own_journals`, `can_manage_journal_access`, `can_manage_temp_sheet` (полный доступ к температурному листу + выдача доступа сотрудникам) |
 | `employee` | Сотрудник | `can_access_cabinet` |
 | `chief_doctor` | Главный врач | `can_access_cabinet`, `can_access_cabinet_chief` |
 | `quality_department` | Контроль качества | `can_access_cabinet`, `can_access_quality_cabinet`, `can_manage_references`, `can_view_incidents` |
@@ -696,6 +696,39 @@ MAX_BOT_TOKEN=...
 CORS_ORIGIN=https://your-domain.ru
 JOURNAL_COPY_MAX_ROWS=365   # максимум копий за раз (по умолчанию 365)
 ```
+
+---
+
+## 8a. Модуль «Температурный лист» (миграция 028)
+
+### Таблицы
+
+- `patients` — карточки детей (ФИО, дата рождения). Отдельной исторической базы пациентов в портале не было; сущность добавлена для модуля.
+- `temperature_sheets` — один лист на пару `(patient_id, department_id)`; поле `height_cm` хранится на листе и не меняет карточку пациента.
+- `temperature_sheet_columns` — позиции 1–15; `temperature_band` ∈ `{above41,40_409,…,below35}` или NULL; без истории/версий.
+- `temp_sheet_user_access` — выдача доступа сотрудникам (`is_active`).
+- `roles.can_manage_temp_sheet` — роль-уровневый доступ менеджера модуля.
+
+### API (`/api/temp-sheets…`)
+
+| Метод | Путь | Кто | Назначение |
+|-------|------|-----|------------|
+| GET | `/temp-sheets/my-access` | auth | hasAccess / canEdit / canManageAccess |
+| GET | `/temp-sheets/departments` | модуль | отделения в области доступа |
+| GET/POST | `/temp-sheets/patients` | модуль / редактор | поиск / создание ребёнка |
+| GET/POST | `/temp-sheets` | модуль / редактор | список / create-or-get |
+| GET | `/temp-sheets/:id` | модуль | лист + 15 колонок |
+| PATCH | `/temp-sheets/:id/header` | редактор | рост |
+| PATCH | `/temp-sheets/:id/columns/:col` | редактор | частичное обновление полей |
+| DELETE | `/temp-sheets/:id/columns/:col` | редактор | очистка колонки |
+| DELETE | `/temp-sheets/:id/columns` | редактор | очистка всех 15 колонок |
+| GET/PUT | `/temp-sheets/module-access` | canManageTempSheet | выдача/отзыв доступа |
+
+**Права:** главная медсестра/админ (`can_manage_temp_sheet`) — полный доступ ко всем листам (просмотр, создание, заполнение, очистка, выгрузка) и управление доступом сотрудников. Сотрудники с `temp_sheet_user_access.is_active` — только в своих `employee_departments`. История заполнений не ведётся. PDF/Excel формируются на клиенте после авторизованного GET.
+
+### SQL
+
+Файл: `backend/sql/028_temperature_sheet.sql`. При старте сервера таблицы создаёт `ensureTempSheetTables()`.
 
 ---
 
