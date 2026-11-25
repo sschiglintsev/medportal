@@ -59,9 +59,10 @@ export async function getEmployees(
   next: NextFunction,
 ): Promise<void> {
   try {
-    const { q, departmentId, active } = req.query as {
+    const { q, departmentId, role, active } = req.query as {
       q?: string;
       departmentId?: string;
+      role?: string;
       active?: string;
     };
     const page = Math.max(1, Number(req.query.page ?? 1));
@@ -84,6 +85,12 @@ export async function getEmployees(
         WHERE ed2.user_id = u.id AND ed2.department_id = $${idx} AND ed2.is_active = TRUE
       )`);
       params.push(Number(departmentId));
+      idx++;
+    }
+
+    if (role) {
+      conditions.push(`u.role = $${idx}`);
+      params.push(role);
       idx++;
     }
 
@@ -869,7 +876,17 @@ export async function importCommit(
       return;
     }
 
-    const rowsData = batch.rows_data as { items: ImportPreviewItem[]; previewRows: Array<{ status: string; fullName: string; departmentId?: number; position: string; employeeCode?: string }> };
+    const rowsData = batch.rows_data as {
+      items: ImportPreviewItem[];
+      previewRows: Array<{
+        status: string;
+        fullName: string;
+        departmentName?: string;
+        departmentId?: number;
+        position: string;
+        employeeCode?: string;
+      }>;
+    };
 
     // Применяем только строки без конфликтов/ошибок (или явно одобренные через decisions)
     const toProcess = rowsData.previewRows.filter((r) => r.status === 'new_user' || r.status === 'existing_user');
@@ -878,7 +895,14 @@ export async function importCommit(
     const newUserRows = toProcess.filter((r) => r.status === 'new_user');
     const tempPasswords = generateUniqueTemporaryPasswords(newUserRows.length);
 
-    const credentialsResult: Array<{ fullName: string; username: string; temporaryPassword: string; employeeCode: string }> = [];
+    const credentialsResult: Array<{
+      fullName: string;
+      username: string;
+      temporaryPassword: string;
+      employeeCode: string;
+      department: string;
+      position: string;
+    }> = [];
 
     const hashes = await Promise.all(
       tempPasswords.map((pw) => bcrypt.hash(pw, 10)),
@@ -933,6 +957,8 @@ export async function importCommit(
               username: login,
               temporaryPassword: tempPasswords[newUserIdx - 1],
               employeeCode: code,
+              department: row.departmentName?.trim() ?? '',
+              position: row.position.trim(),
             });
           }
           // existing_user — только добавляем привязку (логику упрощаем до добавления)

@@ -23,7 +23,14 @@ export type CreateEmployeeResponse = {
 
 export async function fetchEmployees(
   token: string,
-  params: { q?: string; departmentId?: number; active?: boolean; page?: number; limit?: number } = {},
+  params: {
+    q?: string;
+    departmentId?: number;
+    role?: string;
+    active?: boolean;
+    page?: number;
+    limit?: number;
+  } = {},
 ): Promise<EmployeesResponse> {
   const { data } = await http.get<EmployeesResponse>('/employees', {
     headers: { Authorization: `Bearer ${token}` },
@@ -145,6 +152,8 @@ export type ImportCommitResponse = {
     username: string;
     temporaryPassword: string;
     employeeCode: string;
+    department: string;
+    position: string;
   }>;
 };
 

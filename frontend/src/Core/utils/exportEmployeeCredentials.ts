@@ -3,7 +3,8 @@ import * as XLSX from 'xlsx';
 export type EmployeeCredentialRow = {
   fullName: string;
   employeeCode: string;
-  departments: string; // "Отделение — Должность; ..."
+  department: string;
+  position: string;
   username: string;
   temporaryPassword: string;
 };
@@ -24,12 +25,19 @@ export function buildCredentialsWorkbook(
 
   // ── Лист 1: Доступы ────────────────────────────────────────
   const accessData: string[][] = [
-    ['ФИО', 'Код сотрудника', 'Отделения и должности', 'Логин', 'Временный пароль'],
-    ...credentials.map((c) => [c.fullName, c.employeeCode, c.departments, c.username, c.temporaryPassword]),
+    ['ФИО', 'Код сотрудника', 'Отделение', 'Должность', 'Логин', 'Временный пароль'],
+    ...credentials.map((c) => [
+      c.fullName,
+      c.employeeCode,
+      c.department,
+      c.position,
+      c.username,
+      c.temporaryPassword,
+    ]),
   ];
   const accessSheet = XLSX.utils.aoa_to_sheet(accessData);
   accessSheet['!cols'] = [
-    { wch: 30 }, { wch: 15 }, { wch: 40 }, { wch: 20 }, { wch: 20 },
+    { wch: 30 }, { wch: 15 }, { wch: 30 }, { wch: 25 }, { wch: 20 }, { wch: 18 },
   ];
   XLSX.utils.book_append_sheet(wb, accessSheet, 'Доступы');
 
@@ -38,11 +46,12 @@ export function buildCredentialsWorkbook(
   for (const c of credentials) {
     cardRows.push([`ФИО:`, c.fullName]);
     cardRows.push([`Код сотрудника:`, c.employeeCode]);
-    cardRows.push([`Место работы:`, c.departments]);
+    cardRows.push([`Отделение:`, c.department]);
+    cardRows.push([`Должность:`, c.position]);
     cardRows.push([`Портал:`, portalUrl]);
     cardRows.push([`Логин:`, c.username]);
     cardRows.push([`Временный пароль:`, c.temporaryPassword]);
-    cardRows.push([`Инструкция:`, 'При первом входе система потребует смену пароля (минимум 15 символов)']);
+    cardRows.push([`Инструкция:`, 'При первом входе система потребует смену пароля (минимум 8 символов)']);
     cardRows.push(['', '']); // разделитель
   }
 

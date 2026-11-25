@@ -1,39 +1,38 @@
 import crypto from 'crypto';
 
 /**
- * Алфавит для временных паролей:
- * - Латинские буквы (верхний и нижний регистр) и цифры
- * - Исключены визуально неоднозначные символы: 0, O, o, 1, I, i, l
+ * Алфавиты для временных паролей.
+ * Исключены визуально неоднозначные буквы: O, I, l.
+ * Формат: 1 заглавная + 1 строчная + 6 цифр (всего 8 символов).
  */
-const TEMP_PASSWORD_ALPHABET =
-  'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+const UPPER_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+const LOWER_ALPHABET = 'abcdefghjkmnpqrstuvwxyz';
+const DIGIT_ALPHABET = '0123456789';
 
-const TEMP_PASSWORD_LENGTH = 16;
+/**
+ * Выбирает один символ из alphabet равномерно (crypto + rejection sampling).
+ */
+function pickChar(alphabet: string): string {
+  const len = alphabet.length;
+  const maxUsable = 256 - (256 % len);
+  for (;;) {
+    const byte = crypto.randomBytes(1)[0];
+    if (byte < maxUsable) {
+      return alphabet[byte % len];
+    }
+  }
+}
 
 /**
  * Генерирует криптографически стойкий временный пароль.
- * Не использует Math.random().
+ * Формат: Aa123456 — заглавная, строчная, затем 6 цифр.
  */
 export function generateTemporaryPassword(): string {
-  const len = TEMP_PASSWORD_ALPHABET.length;
-  const randomBytes = crypto.randomBytes(TEMP_PASSWORD_LENGTH * 2); // запас для uniform sampling
-  let result = '';
-
-  let byteIndex = 0;
-  while (result.length < TEMP_PASSWORD_LENGTH) {
-    if (byteIndex >= randomBytes.length) {
-      // Запрашиваем ещё байт (редкий случай)
-      byteIndex = 0;
-      randomBytes.set(crypto.randomBytes(TEMP_PASSWORD_LENGTH * 2));
-    }
-    const byte = randomBytes[byteIndex++];
-    // Отбрасываем байты, создающие bias (uniform rejection)
-    const maxUsable = 256 - (256 % len);
-    if (byte < maxUsable) {
-      result += TEMP_PASSWORD_ALPHABET[byte % len];
-    }
+  let digits = '';
+  for (let i = 0; i < 6; i++) {
+    digits += pickChar(DIGIT_ALPHABET);
   }
-  return result;
+  return pickChar(UPPER_ALPHABET) + pickChar(LOWER_ALPHABET) + digits;
 }
 
 /**

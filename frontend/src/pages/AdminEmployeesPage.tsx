@@ -25,9 +25,10 @@ import {
   resetEmployeePassword,
   setEmployeeStatus,
 } from '../Core/services/employee.service';
+import { fetchRegistrationRoles } from '../Core/services/auth.service';
 import { fetchDepartments } from '../Core/services/reference.service';
 import { useAppStore } from '../Core/store/app.store';
-import type { Department, EmployeeItem } from '../Core/types/common';
+import type { Department, EmployeeItem, RoleOption } from '../Core/types/common';
 import {
   buildCredentialsWorkbook,
   downloadCredentialsXlsx,
@@ -42,19 +43,30 @@ import './AdminEmployeesPage.scss';
 
 const { Title, Text } = Typography;
 
+const IMPORT_STATUS_LABELS: Record<string, string> = {
+  new_user: 'Новый пользователь',
+  existing_user: 'Уже существует',
+  conflict: 'Конфликт',
+  error: 'Ошибка',
+};
+
 type NewCredential = {
   fullName: string;
   username: string;
   temporaryPassword: string;
   employeeCode: string;
+  department?: string;
+  position?: string;
 };
 
 export function AdminEmployeesPage() {
   const token = useAppStore((s) => s.token)!;
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [roles, setRoles] = useState<RoleOption[]>([]);
 
   useEffect(() => {
     void fetchDepartments().then(setDepartments).catch(() => {});
+    void fetchRegistrationRoles().then(setRoles).catch(() => {});
   }, []);
 
   const [employees, setEmployees] = useState<EmployeeItem[]>([]);
@@ -62,6 +74,8 @@ export function AdminEmployeesPage() {
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [q, setQ] = useState('');
+  const [filterRole, setFilterRole] = useState<string | undefined>(undefined);
+  const [filterDepartmentId, setFilterDepartmentId] = useState<number | undefined>(undefined);
 
   // Создание
   const [createOpen, setCreateOpen] = useState(false);
@@ -89,7 +103,13 @@ export function AdminEmployeesPage() {
   const loadEmployees = useCallback(async () => {
     setLoading(true);
     try {
-      const result = await fetchEmployees(token, { q, page, limit: 50 });
+      const result = await fetchEmployees(token, {
+        q: q || undefined,
+        role: filterRole,
+        departmentId: filterDepartmentId,
+        page,
+        limit: 50,
+      });
       setEmployees(result.items);
       setTotal(result.total);
     } catch {
@@ -97,7 +117,7 @@ export function AdminEmployeesPage() {
     } finally {
       setLoading(false);
     }
-  }, [token, q, page]);
+  }, [token, q, filterRole, filterDepartmentId, page]);
 
   useEffect(() => {
     void loadEmployees();
@@ -116,10 +136,20 @@ export function AdminEmployeesPage() {
         },
         token,
       );
-      credentialsRef.current = [result.credentials as NewCredential & { employeeCode: string }].map((c) => ({
-        ...c,
-        employeeCode: result.employeeCode,
-      }));
+      const activeDepts = values.depts;
+      credentialsRef.current = [
+        {
+          fullName: values.fullName,
+          username: result.credentials.username,
+          temporaryPassword: result.credentials.temporaryPassword,
+          employeeCode: result.employeeCode,
+          department: activeDepts
+            .map((d) => departments.find((dep) => dep.id === d.departmentId)?.name ?? '')
+            .filter(Boolean)
+            .join('; '),
+          position: activeDepts.map((d) => d.position).filter(Boolean).join('; '),
+        },
+      ];
       setCreateOpen(false);
       form.resetFields();
       setCredentialsModalOpen(true);
@@ -155,12 +185,15 @@ export function AdminEmployeesPage() {
       onOk: async () => {
         try {
           const result = await resetEmployeePassword(emp.id, token);
+          const activeDepts = emp.departments.filter((d) => d.is_active);
           credentialsRef.current = [
             {
               fullName: emp.full_name,
               username: emp.username,
               temporaryPassword: result.temporaryPassword,
               employeeCode: emp.employee_code ?? '',
+              department: activeDepts.map((d) => d.name).join('; '),
+              position: activeDepts.map((d) => d.position).join('; '),
             },
           ];
           setCredentialsModalOpen(true);
@@ -180,7 +213,8 @@ export function AdminEmployeesPage() {
     const rows = creds.map((c) => ({
       fullName: c.fullName,
       employeeCode: c.employeeCode,
-      departments: '',
+      department: c.department ?? '',
+      position: c.position ?? '',
       username: c.username,
       temporaryPassword: c.temporaryPassword,
     }));
@@ -279,7 +313,8 @@ export function AdminEmployeesPage() {
     const rows = importCreds.map((c) => ({
       fullName: c.fullName,
       employeeCode: c.employeeCode,
-      departments: '',
+      department: c.department ?? '',
+      position: c.position ?? '',
       username: c.username,
       temporaryPassword: c.temporaryPassword,
     }));
@@ -350,13 +385,40 @@ export function AdminEmployeesPage() {
   return (
     <div className="admin-employees-page">
       <div className="admin-employees-page__toolbar">
-        <Space>
+        <Space wrap>
           <Input.Search
             placeholder="Поиск по ФИО, логину, коду..."
             value={q}
-            onChange={(e) => setQ(e.target.value)}
+            onChange={(e) => { setQ(e.target.value); setPage(1); }}
             onSearch={() => void loadEmployees()}
+            allowClear
             style={{ width: 280 }}
+          />
+          <Select
+            placeholder="Роль"
+            allowClear
+            value={filterRole}
+            onChange={(value: string | undefined) => {
+              setFilterRole(value);
+              setPage(1);
+            }}
+            options={roles.map((r) => ({ value: r.value, label: r.title }))}
+            style={{ width: 200 }}
+            showSearch
+            optionFilterProp="label"
+          />
+          <Select
+            placeholder="Отделение"
+            allowClear
+            value={filterDepartmentId}
+            onChange={(value: number | undefined) => {
+              setFilterDepartmentId(value);
+              setPage(1);
+            }}
+            options={departments.map((d) => ({ value: d.id, label: d.name }))}
+            style={{ width: 240 }}
+            showSearch
+            optionFilterProp="label"
           />
           <Upload beforeUpload={(file) => { void handleFileUpload(file); return false; }} accept=".xlsx" showUploadList={false}>
             <Button icon={<UploadOutlined />}>Импорт Excel</Button>
@@ -564,7 +626,7 @@ export function AdminEmployeesPage() {
                           r.status === 'error' ? 'red' :
                           r.status === 'conflict' ? 'orange' : 'default'
                         }>
-                          {isCorrected ? 'исправлено ↻' : r.status}
+                          {isCorrected ? 'Исправлено ↻' : (IMPORT_STATUS_LABELS[r.status] ?? r.status)}
                         </Tag>
                         {r.message && !isDeptError && (
                           <Text type="secondary" style={{ fontSize: 11 }}>{r.message}</Text>
