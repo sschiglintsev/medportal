@@ -5,6 +5,7 @@ import {
   DownloadOutlined,
   EyeOutlined,
   PlusOutlined,
+  PrinterOutlined,
   UploadOutlined,
 } from '@ant-design/icons';
 import {
@@ -48,6 +49,7 @@ import {
 } from '../Core/services/journal.service';
 import { useAppStore } from '../Core/store/app.store';
 import type { Department, Journal, JournalColumn, JournalRow } from '../Core/types/common';
+import { downloadJournalExcel, printJournal } from '../Core/utils/journalExcelExport';
 import './ManagedJournalsPage.scss';
 
 const { Title, Text } = Typography;
@@ -99,35 +101,12 @@ function JournalViewer({ journal, token, onDone }: ViewerProps) {
   const dataCols = cols.filter((c) => c.type !== 'confirmation');
   const confirmCol = cols.find((c) => c.type === 'confirmation');
 
-  // ── Экспорт в Excel ──────────────────────────────────────────────────────
   const exportToExcel = () => {
-    const header = [
-      ...dataCols.map((c) => c.title),
-      ...(confirmCol ? [confirmCol.title || 'Подтверждение', 'Дата подтверждения', 'Подписал'] : []),
-    ];
-    const dataRows = rows.map((row) => {
-      const cells: (string | null)[] = dataCols.map((col) => {
-        const val = row.values?.[col.id] ?? null;
-        if (!val) return null;
-        if (col.type === 'date') return dayjs(val).isValid() ? dayjs(val).format('DD.MM.YYYY') : val;
-        return val;
-      });
-      if (confirmCol) {
-        if (row.confirmation_status === 'active') {
-          cells.push('✓');
-          cells.push(row.confirmed_at ? dayjs(row.confirmed_at).format('DD.MM.YYYY HH:mm') : '');
-          cells.push(row.signer_full_name ?? '');
-        } else {
-          cells.push('', '', '');
-        }
-      }
-      return cells;
-    });
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.aoa_to_sheet([header, ...dataRows]);
-    ws['!cols'] = header.map((h) => ({ wch: Math.max(h.length + 2, 14) }));
-    XLSX.utils.book_append_sheet(wb, ws, 'Журнал');
-    XLSX.writeFile(wb, `${journal.title}.xlsx`);
+    downloadJournalExcel(journal.title, cols, rows);
+  };
+
+  const handlePrint = () => {
+    printJournal(journal.title, journal.department_name, cols, rows);
   };
 
   // ── Колонки таблицы ──────────────────────────────────────────────────────
@@ -182,6 +161,14 @@ function JournalViewer({ journal, token, onDone }: ViewerProps) {
           <Text type="secondary" style={{ fontSize: 13 }}>
             Подписано: {signedCount} / {rows.length}
           </Text>
+          <Button
+            size="small"
+            icon={<PrinterOutlined />}
+            onClick={handlePrint}
+            disabled={rows.length === 0}
+          >
+            Печать
+          </Button>
           <Button
             size="small"
             icon={<DownloadOutlined />}
@@ -292,49 +279,12 @@ function JournalEditor({ journal, token, onDone }: EditorProps) {
     return false; // не загружать автоматически
   };
 
-  // ── Экспорт журнала в Excel ───────────────────────────────────────────────
-
   const exportToExcel = () => {
-    const dataCols = cols.filter((c) => c.type !== 'confirmation');
-    const confirmCol = cols.find((c) => c.type === 'confirmation');
+    downloadJournalExcel(journal.title, cols, rows);
+  };
 
-    // Заголовки
-    const header = [
-      ...dataCols.map((c) => c.title),
-      ...(confirmCol ? [confirmCol.title || 'Подтверждение', 'Дата подтверждения', 'Подписал'] : []),
-    ];
-
-    // Строки данных
-    const dataRows = rows.map((row) => {
-      const cells: (string | null)[] = dataCols.map((col) => {
-        const val = row.values?.[col.id] ?? null;
-        if (!val) return null;
-        if (col.type === 'date') {
-          return dayjs(val).isValid() ? dayjs(val).format('DD.MM.YYYY') : val;
-        }
-        return val;
-      });
-
-      if (confirmCol) {
-        if (row.confirmation_status === 'active') {
-          cells.push('✓');
-          cells.push(row.confirmed_at ? dayjs(row.confirmed_at).format('DD.MM.YYYY HH:mm') : '');
-          cells.push(row.signer_full_name ?? '');
-        } else {
-          cells.push('', '', '');
-        }
-      }
-      return cells;
-    });
-
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.aoa_to_sheet([header, ...dataRows]);
-
-    // Ширина столбцов
-    ws['!cols'] = header.map((h) => ({ wch: Math.max(h.length + 2, 14) }));
-
-    XLSX.utils.book_append_sheet(wb, ws, 'Журнал');
-    XLSX.writeFile(wb, `${journal.title}.xlsx`);
+  const handlePrint = () => {
+    printJournal(journal.title, journal.department_name, cols, rows);
   };
 
   // ── Колонки ─────────────────────────────────────────────────────────────
@@ -542,15 +492,24 @@ function JournalEditor({ journal, token, onDone }: EditorProps) {
             {STATUS_LABELS[journal.status]}
           </Tag>
         </Title>
-        <Button
-          size="small"
-          icon={<DownloadOutlined />}
-          onClick={exportToExcel}
-          disabled={rows.length === 0 && cols.length === 0}
-          style={{ marginLeft: 'auto' }}
-        >
-          Экспорт в Excel
-        </Button>
+        <Space style={{ marginLeft: 'auto' }}>
+          <Button
+            size="small"
+            icon={<PrinterOutlined />}
+            onClick={handlePrint}
+            disabled={rows.length === 0}
+          >
+            Печать
+          </Button>
+          <Button
+            size="small"
+            icon={<DownloadOutlined />}
+            onClick={exportToExcel}
+            disabled={rows.length === 0 && cols.length === 0}
+          >
+            Экспорт в Excel
+          </Button>
+        </Space>
       </div>
 
       {/* ── Колонки ─────────────────────────────────────────────── */}

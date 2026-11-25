@@ -129,7 +129,6 @@ export async function confirmJournalRow(
   rowId: number,
   payload: {
     expectedRevision: number;
-    password: string;
     idempotencyKey?: string;
     /** Значения для колонок с is_editable_by_employee=true */
     editableValues?: Record<string, string | null>;

@@ -1,4 +1,3 @@
-import bcrypt from 'bcrypt';
 import { NextFunction, Response } from 'express';
 import type { PoolClient } from 'pg';
 
@@ -946,17 +945,11 @@ export async function confirmRow(
   try {
     const journalId = Number(req.params.id);
     const rowId = Number(req.params.rowId);
-    const { expectedRevision, password, idempotencyKey, editableValues } = req.body as {
+    const { expectedRevision, idempotencyKey, editableValues } = req.body as {
       expectedRevision: number;
-      password: string;
       idempotencyKey?: string;
       editableValues?: Record<string, string | null>;
     };
-
-    if (!password) {
-      res.status(422).json({ code: 'VALIDATION_ERROR', message: 'password is required' });
-      return;
-    }
 
     const userId = req.user!.userId;
 
@@ -974,37 +967,12 @@ export async function confirmRow(
       }
     }
 
-    // 1. Проверяем пароль вне транзакции (дорогая операция)
-    const userResult = await withDbClient((client) =>
-      client.query<{ password_hash: string; auth_version: number; is_active: boolean; must_change_password: boolean }>(
-        `SELECT password_hash, COALESCE(auth_version,0) AS auth_version,
-                COALESCE(is_active, TRUE) AS is_active,
-                COALESCE(must_change_password, FALSE) AS must_change_password
-         FROM users WHERE id = $1 LIMIT 1`,
-        [userId],
-      ),
-    );
-
-    const dbUser = userResult.rows[0];
-    if (!dbUser) {
-      res.status(401).json({ code: 'UNAUTHENTICATED', message: 'User not found' });
-      return;
-    }
-
-    const isValidPassword = await bcrypt.compare(password, dbUser.password_hash);
-    if (!isValidPassword) {
-      // Неверный пароль — НЕ разлогинивает; отдельный код ошибки
-      res.status(422).json({ code: 'CONFIRMATION_PASSWORD_INVALID', message: 'Password is incorrect' });
-      return;
-    }
-
-    // 2. Транзакционная часть
     await withDbClient(async (client) => {
       await client.query('BEGIN');
       try {
-        // Повторно проверяем актуальность данных пользователя
-        const freshUser = await client.query<{ password_hash: string; auth_version: number; is_active: boolean }>(
-          `SELECT password_hash, COALESCE(auth_version,0) AS auth_version, COALESCE(is_active, TRUE) AS is_active
+        // Проверяем актуальность данных пользователя
+        const freshUser = await client.query<{ auth_version: number; is_active: boolean }>(
+          `SELECT COALESCE(auth_version,0) AS auth_version, COALESCE(is_active, TRUE) AS is_active
            FROM users WHERE id = $1 FOR SHARE`,
           [userId],
         );

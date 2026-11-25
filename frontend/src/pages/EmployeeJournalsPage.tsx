@@ -30,7 +30,6 @@ export function EmployeeJournalsPage() {
   const [rowsLoading, setRowsLoading] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmRow, setConfirmRow] = useState<JournalRow | null>(null);
-  const [password, setPassword] = useState('');
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [confirmError, setConfirmError] = useState<string | null>(null);
   /** Значения для editable-колонок, заполняемых сотрудником при подтверждении */
@@ -74,7 +73,6 @@ export function EmployeeJournalsPage() {
 
   const openConfirm = (row: JournalRow) => {
     setConfirmRow(row);
-    setPassword('');
     setConfirmError(null);
     // Предзаполняем editable-поля текущими значениями строки
     const initVals: Record<string, string> = {};
@@ -88,7 +86,7 @@ export function EmployeeJournalsPage() {
   };
 
   const handleConfirm = async () => {
-    if (!confirmRow || !selectedJournal || !password) return;
+    if (!confirmRow || !selectedJournal) return;
     setConfirmLoading(true);
     setConfirmError(null);
     try {
@@ -98,7 +96,6 @@ export function EmployeeJournalsPage() {
       const hasEditables = columns.some((c) => c.is_editable_by_employee);
       const payload: Parameters<typeof confirmJournalRow>[2] = {
         expectedRevision: confirmRow.current_revision,
-        password,
         idempotencyKey: idempKey,
       };
       if (hasEditables) {
@@ -114,7 +111,6 @@ export function EmployeeJournalsPage() {
 
       await confirmJournalRow(selectedJournal.id, confirmRow.id, payload, token);
       setConfirmOpen(false);
-      setPassword('');
       setEditableValues({});
       // Перезагружаем строки
       const data = await fetchJournalRows(selectedJournal.id, token);
@@ -131,7 +127,6 @@ export function EmployeeJournalsPage() {
 
   const handleCloseConfirm = () => {
     setConfirmOpen(false);
-    setPassword('');
     setConfirmError(null);
     setEditableValues({});
   };
@@ -318,15 +313,6 @@ export function EmployeeJournalsPage() {
               {confirmError && (
                 <Alert type="error" message={confirmError} style={{ marginBottom: 8 }} showIcon />
               )}
-
-              <Form.Item label="Введите действующий пароль" required style={{ marginBottom: 0 }}>
-                <Input.Password
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="current-password"
-                  onPressEnter={() => void handleConfirm()}
-                />
-              </Form.Item>
             </div>
           );
         })()}
