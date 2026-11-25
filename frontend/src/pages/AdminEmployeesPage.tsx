@@ -41,7 +41,9 @@ import type { ParsedEmployeeRow } from '../Core/utils/parseEmployeesExcel';
 import type { ImportPreviewResponse } from '../Core/services/employee.service';
 import './AdminEmployeesPage.scss';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
+
+type ImportPreviewRow = ImportPreviewResponse['rows'][number];
 
 const IMPORT_STATUS_LABELS: Record<string, string> = {
   new_user: 'Новый пользователь',
@@ -575,7 +577,7 @@ export function AdminEmployeesPage() {
               Конфликтов: {importPreviewData.summary.conflicts} ·
               Ошибок: {importPreviewData.summary.errors}
             </Text>
-            <Table
+            <Table<ImportPreviewRow>
               dataSource={importPreviewData.rows}
               rowKey="sourceRow"
               size="small"
@@ -586,7 +588,7 @@ export function AdminEmployeesPage() {
                 {
                   title: 'Отделение',
                   key: 'dept',
-                  render: (_: unknown, r: { sourceRow: number; status: string; departmentName: string; message?: string }) => {
+                  render: (_: unknown, r) => {
                     const isDeptError = r.status === 'error' && (r.message ?? '').includes('не найден');
                     if (isDeptError) {
                       return (
@@ -614,7 +616,7 @@ export function AdminEmployeesPage() {
                   title: 'Статус',
                   key: 'status',
                   width: 160,
-                  render: (_: unknown, r: { sourceRow: number; status: string; message?: string }) => {
+                  render: (_: unknown, r) => {
                     const isDeptError = r.status === 'error' && (r.message ?? '').includes('не найден');
                     const isCorrected = isDeptError && deptCorrections[r.sourceRow];
                     return (

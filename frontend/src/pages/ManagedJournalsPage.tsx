@@ -43,7 +43,6 @@ import {
   fetchJournals,
   publishJournal,
   restoreJournal,
-  updateJournal,
   updateJournalColumns,
   updateJournalRow,
 } from '../Core/services/journal.service';
